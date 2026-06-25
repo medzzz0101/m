@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Footprint Checker — Controlla la tua esposizione pubblica</title>
+  <meta name="description" content="Self-check OSINT: scopri dove la tua email o username compaiono pubblicamente. Solo per controllare la tua esposizione o quella di chi acconsente." />
+
+  <!-- React (no build step: demo apribile direttamente) -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #070b14;
+      --bg-2: #0c1322;
+      --panel: rgba(18, 27, 45, 0.72);
+      --panel-solid: #111a2e;
+      --border: rgba(86, 122, 200, 0.18);
+      --text: #e8eefc;
+      --muted: #8a9bc4;
+      --accent: #34e1c2;
+      --accent-2: #4f8bff;
+      --danger: #ff5d73;
+      --warn: #ffb454;
+      --ok: #3ddc84;
+      --shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background:
+        radial-gradient(1100px 600px at 80% -10%, rgba(79, 139, 255, 0.16), transparent 60%),
+        radial-gradient(900px 500px at 0% 10%, rgba(52, 225, 194, 0.10), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ---------- Header ---------- */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .brand-logo {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: grid; place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 8px 24px -8px rgba(52,225,194,0.6);
+      font-size: 22px;
+    }
+    .brand-name { font-weight: 800; font-size: 20px; letter-spacing: -0.02em; }
+    .brand-name span { color: var(--accent); }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 40px);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin: 24px 0 10px;
+      font-weight: 800;
+    }
+    h1 .grad {
+      background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .sub { color: var(--muted); font-size: 16px; max-width: 540px; line-height: 1.55; }
+
+    /* ---------- Consent banner ---------- */
+    .consent {
+      margin: 22px 0 26px;
+      padding: 13px 16px;
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 12px;
+      background: var(--panel);
+      font-size: 13.5px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+      line-height: 1.5;
+    }
+    .consent b { color: var(--text); font-weight: 600; }
+
+    /* ---------- Scanner card ---------- */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tab {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      font-family: inherit;
+    }
+    .tab.active {
+      color: var(--text);
+      background: linear-gradient(135deg, rgba(52,225,194,0.16), rgba(79,139,255,0.16));
+      border-color: rgba(52,225,194,0.4);
+    }
+
+    .field { display: flex; gap: 10px; }
+    .input-shell {
+      flex: 1;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(7, 11, 20, 0.6);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0 14px;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    .input-shell:focus-within {
+      border-color: rgba(52,225,194,0.55);
+      box-shadow: 0 0 0 4px rgba(52,225,194,0.10);
+    }
+    .input-shell .prefix { color: var(--muted); font-size: 15px; }
+    input.scan-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 15px;
+      padding: 14px 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    input.scan-input::placeholder { color: #51618a; }
+
+    .btn-scan {
+      border: none;
+      border-radius: 12px;
+      padding: 0 22px;
+      font-weight: 700;
+      font-size: 14.5px;
+      cursor: pointer;
+      color: #04121a;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-family: inherit;
+      white-space: nowrap;
+      transition: transform 0.12s ease, filter 0.18s ease, opacity 0.18s ease;
+      box-shadow: 0 10px 30px -12px rgba(52,225,194,0.8);
+    }
+    .btn-scan:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.06); }
+    .btn-scan:active:not(:disabled) { transform: translateY(0); }
+    .btn-scan:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .consent-check {
+      display: flex; align-items: flex-start; gap: 9px;
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.45;
+      cursor: pointer;
+      user-select: none;
+    }
+    .consent-check input { margin-top: 2px; accent-color: var(--accent); width: 16px; height: 16px; }
+    .err { color: var(--danger); font-size: 13px; margin-top: 10px; min-height: 16px; }
+
+    .quota {
+      margin-top: 6px;
+      font-size: 12.5px;
+      color: var(--muted);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .quota b { color: var(--accent); }
+
+    /* ---------- Scanning state ---------- */
+    .scanning { margin-top: 22px; }
+    .scan-line {
+      display: flex; align-items: center; gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 7px 0;
+      opacity: 0;
+      animation: fadeUp 0.4s ease forwards;
+    }
+    .scan-line .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 1s infinite;
+    }
+    .scan-line.done .dot { background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: none; }
+    .scan-line .tick { color: var(--ok); margin-left: auto; }
+
+    .progress-track {
+      height: 6px; border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+      margin: 4px 0 18px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 12px rgba(52,225,194,0.6);
+      transition: width 0.4s ease;
+    }
+
+    /* ---------- Results ---------- */
+    .results { margin-top: 26px; }
+
+    .reveal { opacity: 0; transform: translateY(14px); animation: reveal 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+    .score-card {
+      text-align: center;
+      padding: 26px 22px 24px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+    .gauge { position: relative; width: 168px; height: 168px; margin: 0 auto 6px; }
+    .gauge svg { transform: rotate(-90deg); }
+    .gauge .num {
+      position: absolute; inset: 0;
+      display: grid; place-content: center;
+      text-align: center;
+    }
+    .gauge .num .val { font-size: 44px; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+    .gauge .num .of { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .score-label { font-weight: 700; font-size: 18px; margin-top: 4px; }
+    .score-desc { color: var(--muted); font-size: 14px; margin-top: 6px; max-width: 420px; margin-inline: auto; line-height: 1.5; }
+
+    .section-title {
+      font-size: 13px; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--muted); font-weight: 700;
+      margin: 24px 4px 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .count {
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      margin-bottom: 10px;
+    }
+    .item .icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: grid; place-items: center;
+      font-size: 18px; flex-shrink: 0;
+      background: rgba(255,255,255,0.05);
+    }
+    .item .body { flex: 1; min-width: 0; }
+    .item .body .name { font-weight: 700; font-size: 15px; }
+    .item .body .meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; line-height: 1.45; }
+    .badge {
+      font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
+      white-space: nowrap; font-family: 'JetBrains Mono', monospace;
+    }
+    .badge.found { background: rgba(255,93,115,0.14); color: var(--danger); }
+    .badge.exposed { background: rgba(255,180,84,0.14); color: var(--warn); }
+    .badge.clear { background: rgba(61,220,132,0.14); color: var(--ok); }
+
+    /* ---------- Premium ---------- */
+    .premium {
+      margin-top: 26px;
+      border: 1px solid rgba(79,139,255,0.35);
+      border-radius: 18px;
+      padding: 22px;
+      background: linear-gradient(135deg, rgba(79,139,255,0.10), rgba(52,225,194,0.06));
+      position: relative;
+      overflow: hidden;
+    }
+    .premium h3 { margin: 0 0 6px; font-size: 18px; }
+    .premium p { margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .premium .perks { display: grid; gap: 8px; margin-bottom: 18px; }
+    .premium .perk { display: flex; align-items: center; gap: 9px; font-size: 13.5px; }
+    .premium .perk .c { color: var(--accent); }
+    .premium-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn-ghost {
+      flex: 1;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-weight: 600; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+      transition: border-color 0.18s ease, background 0.18s ease;
+    }
+    .btn-ghost:hover { border-color: rgba(52,225,194,0.5); background: rgba(52,225,194,0.06); }
+    .btn-premium {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-weight: 700; font-size: 14px;
+      cursor: pointer; font-family: inherit;
+      color: #04121a;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 10px 30px -12px rgba(52,225,194,0.8);
+      transition: transform 0.12s ease, filter 0.18s;
+    }
+    .btn-premium:hover { transform: translateY(-1px); filter: brightness(1.06); }
+
+    /* ---------- Quota reached modal ---------- */
+    .locked {
+      margin-top: 22px;
+      text-align: center;
+      padding: 30px 22px;
+      border: 1px dashed rgba(255,180,84,0.4);
+      border-radius: 18px;
+      background: rgba(255,180,84,0.05);
+    }
+    .locked .lock { font-size: 34px; }
+    .locked h3 { margin: 10px 0 6px; }
+    .locked p { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+
+    .footer {
+      margin-top: 40px; text-align: center;
+      color: #51618a; font-size: 12.5px; line-height: 1.6;
+    }
+    .footer a { color: var(--muted); }
+    .demo-pill {
+      display: inline-block;
+      margin-bottom: 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      letter-spacing: 0.06em;
+      color: var(--warn);
+      background: rgba(255,180,84,0.10);
+      border: 1px solid rgba(255,180,84,0.3);
+      padding: 5px 11px;
+      border-radius: 999px;
+    }
+
+    @keyframes reveal { to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%,100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 15px; height: 15px; border-radius: 50%;
+      border: 2px solid rgba(4,18,26,0.3); border-top-color: #04121a;
+      display: inline-block; animation: spin 0.7s linear infinite;
+      vertical-align: -2px; margin-right: 7px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .reveal, .scan-line { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useRef, useCallback } = React;
+
+    const FREE_SCANS = 2;
+
+    /* ----------------------------------------------------------------
+       MOCK DATA — risultati finti per la demo visiva.
+       In produzione questi arrivano dal backend (proxy verso HIBP +
+       check username stile Sherlock). Il frontend NON conosce la API key.
+    ---------------------------------------------------------------- */
+
+    const MOCK_BREACHES = [
+      { name: "Collection #1", year: 2019, icon: "🗂️", data: "Email, password", sev: "found" },
+      { name: "LinkedIn", year: 2021, icon: "💼", data: "Email, telefono, posizione", sev: "found" },
+      { name: "Dropbox", year: 2016, icon: "📦", data: "Email, password (hash)", sev: "found" },
+      { name: "Adobe", year: 2013, icon: "🅰️", data: "Email, hint password", sev: "found" },
+    ];
+
+    const MOCK_PLATFORMS = [
+      { name: "GitHub", icon: "🐙", url: "github.com/{u}", status: "exposed" },
+      { name: "Reddit", icon: "👽", url: "reddit.com/u/{u}", status: "exposed" },
+      { name: "Instagram", icon: "📸", url: "instagram.com/{u}", status: "exposed" },
+      { name: "X / Twitter", icon: "🐦", url: "x.com/{u}", status: "exposed" },
+      { name: "TikTok", icon: "🎵", url: "tiktok.com/@{u}", status: "clear" },
+      { name: "Steam", icon: "🎮", url: "steamcommunity.com/id/{u}", status: "clear" },
+    ];
+
+    const SCAN_STEPS = [
+      "Inizializzo motore di scansione…",
+      "Interrogo database breach pubblici (HIBP)…",
+      "Verifico presenza username su piattaforme pubbliche…",
+      "Calcolo punteggio di esposizione…",
+    ];
+
+    function scoreFromResults(mode, breaches, platforms) {
+      // Punteggio di esposizione 0–100 (più alto = più esposto)
+      let score = 0;
+      if (mode === "email") {
+        score = Math.min(100, breaches.filter(b => b.sev === "found").length * 22 + 8);
+      } else {
+        const exposed = platforms.filter(p => p.status === "exposed").length;
+        score = Math.min(100, exposed * 15 + 5);
+      }
+      return score;
+    }
+
+    function scoreMeta(score) {
+      if (score >= 66) return { label: "Esposizione alta", color: "var(--danger)", desc: "I tuoi dati compaiono in più fonti pubbliche. Considera di cambiare le password riutilizzate e attivare la 2FA." };
+      if (score >= 33) return { label: "Esposizione media", color: "var(--warn)", desc: "Qualche traccia pubblica rilevata. Tieni d'occhio gli account riutilizzati." };
+      return { label: "Esposizione bassa", color: "var(--ok)", desc: "Poche tracce pubbliche trovate. Buona igiene digitale, continua così." };
+    }
+
+    function Gauge({ score }) {
+      const meta = scoreMeta(score);
+      const r = 70, c = 2 * Math.PI * r;
+      const offset = c - (score / 100) * c;
+      return (
+        <div className="gauge">
+          <svg width="168" height="168" viewBox="0 0 168 168">
+            <circle cx="84" cy="84" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="12" />
+            <circle cx="84" cy="84" r={r} fill="none" stroke={meta.color} strokeWidth="12"
+              strokeLinecap="round" strokeDasharray={c} strokeDashoffset={offset}
+              style={{ transition: "stroke-dashoffset 1.1s cubic-bezier(0.22,1,0.36,1)" }} />
+          </svg>
+          <div className="num">
+            <div className="val" style={{ color: meta.color }}>{score}</div>
+            <div className="of">/ 100 esposizione</div>
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [mode, setMode] = useState("email");
+      const [value, setValue] = useState("");
+      const [consent, setConsent] = useState(false);
+      const [error, setError] = useState("");
+      const [phase, setPhase] = useState("idle"); // idle | scanning | done | locked
+      const [stepIdx, setStepIdx] = useState(0);
+      const [scansUsed, setScansUsed] = useState(0);
+      const [result, setResult] = useState(null);
+      const timers = useRef([]);
+
+      const remaining = Math.max(0, FREE_SCANS - scansUsed);
+
+      const validate = () => {
+        if (!value.trim()) return mode === "email" ? "Inserisci la tua email." : "Inserisci il tuo username.";
+        if (mode === "email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim())) return "Formato email non valido.";
+        if (!consent) return "Devi confermare che stai controllando la TUA esposizione (o quella di chi acconsente).";
+        return "";
+      };
+
+      const reset = () => {
+        timers.current.forEach(clearTimeout);
+        timers.current = [];
+      };
+
+      const runScan = useCallback(() => {
+        const v = validate();
+        if (v) { setError(v); return; }
+        setError("");
+
+        if (remaining <= 0) { setPhase("locked"); return; }
+
+        reset();
+        setResult(null);
+        setPhase("scanning");
+        setStepIdx(0);
+
+        // avanza gli step della scansione
+        SCAN_STEPS.forEach((_, i) => {
+          timers.current.push(setTimeout(() => setStepIdx(i + 1), 650 * (i + 1)));
+        });
+
+        // completa la scansione e mostra i risultati
+        timers.current.push(setTimeout(() => {
+          const breaches = MOCK_BREACHES;
+          const platforms = MOCK_PLATFORMS;
+          const score = scoreFromResults(mode, breaches, platforms);
+          setResult({
+            mode,
+            query: value.trim(),
+            score,
+            breaches,
+            platforms,
+          });
+          setScansUsed(s => s + 1);
+          setPhase("done");
+        }, 650 * (SCAN_STEPS.length + 1)));
+      }, [mode, value, consent, remaining]);
+
+      const onKey = (e) => { if (e.key === "Enter") runScan(); };
+
+      return (
+        <div className="wrap">
+          <div className="brand">
+            <div className="brand-logo">🛡️</div>
+            <div className="brand-name">Footprint<span>Checker</span></div>
+          </div>
+
+          <h1>Scopri la tua <span className="grad">impronta digitale</span> pubblica.</h1>
+          <p className="sub">
+            Controlla in quali data breach noti compare la tua email e su quali
+            piattaforme pubbliche esiste il tuo username. Un self-check, in pochi secondi.
+          </p>
+
+          <div className="consent">
+            <span>🔒</span>
+            <span>
+              <b>Solo per te.</b> Questo strumento serve a controllare la <b>tua</b> esposizione
+              o quella di chi ti ha dato il <b>consenso esplicito</b>. Nessuna ricerca di terzi a
+              loro insaputa, nessuno scraping di massa.
+            </span>
+          </div>
+
+          {/* ---------------- Scanner ---------------- */}
+          <div className="card">
+            <div className="tabs">
+              <button className={"tab" + (mode === "email" ? " active" : "")}
+                onClick={() => { setMode("email"); setError(""); }}>✉️ Email</button>
+              <button className={"tab" + (mode === "username" ? " active" : "")}
+                onClick={() => { setMode("username"); setError(""); }}>👤 Username</button>
+            </div>
+
+            <div className="field">
+              <div className="input-shell">
+                <span className="prefix mono">{mode === "email" ? "@" : "/"}</span>
+                <input
+                  className="scan-input"
+                  type={mode === "email" ? "email" : "text"}
+                  placeholder={mode === "email" ? "tua.email@esempio.com" : "il_tuo_username"}
+                  value={value}
+                  onChange={e => setValue(e.target.value)}
+                  onKeyDown={onKey}
+                  disabled={phase === "scanning"}
+                />
+              </div>
+              <button className="btn-scan" onClick={runScan} disabled={phase === "scanning"}>
+                {phase === "scanning" ? <><span className="spinner"></span>Scansione…</> : "🔍 Scansiona"}
+              </button>
+            </div>
+
+            <label className="consent-check">
+              <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />
+              <span>Confermo che sto controllando la mia esposizione, o quella di una persona che ha dato il consenso esplicito.</span>
+            </label>
+
+            <div className="err">{error}</div>
+
+            <div className="quota">
+              {remaining > 0
+                ? <>Scansioni gratuite rimaste: <b>{remaining}</b> / {FREE_SCANS}</>
+                : <>Hai esaurito le scansioni gratuite. <b style={{color:'var(--warn)'}}>Passa a Premium →</b></>}
+            </div>
+          </div>
+
+          {/* ---------------- Scanning animation ---------------- */}
+          {phase === "scanning" && (
+            <div className="scanning">
+              <div className="progress-track">
+                <div className="progress-fill" style={{ width: (stepIdx / SCAN_STEPS.length) * 100 + "%" }}></div>
+              </div>
+              {SCAN_STEPS.slice(0, stepIdx + 1).map((s, i) => (
+                <div key={i} className={"scan-line" + (i < stepIdx ? " done" : "")} style={{ animationDelay: i * 0.05 + "s" }}>
+                  <span className="dot"></span>
+                  <span>{s}</span>
+                  {i < stepIdx && <span className="tick">✓</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ---------------- Locked (quota esaurita) ---------------- */}
+          {phase === "locked" && (
+            <div className="locked reveal">
+              <div className="lock">🔓</div>
+              <h3>Scansioni gratuite esaurite</h3>
+              <p>Sblocca scansioni illimitate e il report scaricabile con Premium.</p>
+              <button className="btn-premium" style={{maxWidth: 260, margin: "0 auto"}}
+                onClick={() => alert("Demo: qui parte il flusso di pagamento Premium.")}>
+                ✨ Passa a Premium
+              </button>
+            </div>
+          )}
+
+          {/* ---------------- Results ---------------- */}
+          {phase === "done" && result && (
+            <div className="results">
+              {/* Score */}
+              <div className="score-card reveal" style={{ animationDelay: "0.05s" }}>
+                <div className="demo-pill">DATI DIMOSTRATIVI · backend non ancora collegato</div>
+                <Gauge score={result.score} />
+                <div className="score-label" style={{ color: scoreMeta(result.score).color }}>
+                  {scoreMeta(result.score).label}
+                </div>
+                <div className="score-desc">{scoreMeta(result.score).desc}</div>
+                <div className="score-desc mono" style={{ marginTop: 10, fontSize: 12.5, color: "var(--muted)" }}>
+                  target: {result.query}
+                </div>
+              </div>
+
+              {/* Breaches (solo modalità email) */}
+              {result.mode === "email" && (
+                <>
+                  <div className="section-title">
+                    🗂️ Data breach noti
+                    <span className="count">{result.breaches.filter(b => b.sev === "found").length}</span>
+                  </div>
+                  {result.breaches.map((b, i) => (
+                    <div key={b.name} className="item reveal" style={{ animationDelay: (0.25 + i * 0.12) + "s" }}>
+                      <div className="icon">{b.icon}</div>
+                      <div className="body">
+                        <div className="name">{b.name} <span style={{color:'var(--muted)',fontWeight:500,fontSize:13}}>· {b.year}</span></div>
+                        <div className="meta">Dati esposti: {b.data}</div>
+                      </div>
+                      <div className="badge found">TROVATA</div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Platforms (solo modalità username) */}
+              {result.mode === "username" && (
+                <>
+                  <div className="section-title">
+                    🌐 Presenza pubblica su piattaforme
+                    <span className="count">{result.platforms.filter(p => p.status === "exposed").length}</span>
+                  </div>
+                  {result.platforms.map((p, i) => (
+                    <div key={p.name} className="item reveal" style={{ animationDelay: (0.25 + i * 0.1) + "s" }}>
+                      <div className="icon">{p.icon}</div>
+                      <div className="body">
+                        <div className="name">{p.name}</div>
+                        <div className="meta mono">{p.url.replace("{u}", result.query)}</div>
+                      </div>
+                      <div className={"badge " + (p.status === "exposed" ? "exposed" : "clear")}>
+                        {p.status === "exposed" ? "TROVATO" : "LIBERO"}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* Premium upsell */}
+              <div className="premium reveal" style={{ animationDelay: "0.9s" }}>
+                <h3>✨ Sblocca il report completo</h3>
+                <p>La versione gratuita mostra una panoramica. Premium ti dà l'analisi completa e azionabile.</p>
+                <div className="perks">
+                  <div className="perk"><span className="c">✓</span> Scansioni illimitate (email + username)</div>
+                  <div className="perk"><span className="c">✓</span> Report PDF scaricabile e condivisibile</div>
+                  <div className="perk"><span className="c">✓</span> Consigli personalizzati per ridurre l'esposizione</div>
+                  <div className="perk"><span className="c">✓</span> Monitoraggio: avvisi sui nuovi breach</div>
+                </div>
+                <div className="premium-actions">
+                  <button className="btn-ghost" onClick={() => { setPhase("idle"); setValue(""); setConsent(false); }}>
+                    Nuova scansione
+                  </button>
+                  <button className="btn-premium" onClick={() => alert("Demo: qui parte il flusso di pagamento Premium.")}>
+                    ✨ Passa a Premium
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="footer">
+            FootprintChecker · Strumento di self-check OSINT a scopo difensivo.<br/>
+            Usalo solo sui tuoi dati o con consenso esplicito. I dati mostrati in questa
+            demo sono fittizi.
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
