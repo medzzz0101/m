@@ -441,6 +441,84 @@
       return { label: "Esposizione bassa", color: "var(--ok)", desc: "Poche tracce pubbliche trovate. Buona igiene digitale, continua così." };
     }
 
+    /* ----------------------------------------------------------------
+       API layer — il frontend parla solo col backend (stesso origin).
+       Se il backend non è raggiungibile (es. index.html aperto da file://
+       senza server) si ricade automaticamente sui MOCK, così la demo
+       visiva funziona comunque in standalone.
+    ---------------------------------------------------------------- */
+    const API_BASE = "";
+
+    function breachIcon(name = "") {
+      const n = name.toLowerCase();
+      if (n.includes("linkedin")) return "💼";
+      if (n.includes("dropbox")) return "📦";
+      if (n.includes("adobe")) return "🅰️";
+      if (n.includes("collection")) return "🗂️";
+      if (n.includes("facebook")) return "📘";
+      if (n.includes("twitter") || n.includes("x ")) return "🐦";
+      return "🗂️";
+    }
+
+    // Porta la risposta del backend (o un mock) nella forma usata dalla UI.
+    function normalizeResult(data, mode, query) {
+      const breaches = (data.breaches || []).map(b => ({
+        icon: b.icon || breachIcon(b.name || b.title),
+        name: b.title || b.name,
+        year: b.year,
+        data: b.data || (b.dataClasses ? b.dataClasses.join(", ") : "—"),
+        sev: "found",
+      }));
+      const platforms = (data.platforms || []).map(p => ({
+        icon: p.icon || "🌐",
+        name: p.name,
+        url: (p.url || "").replace("{u}", query),
+        status: p.status,
+      }));
+      return {
+        mode: data.mode || mode,
+        query: data.query || query,
+        demo: Boolean(data.demo),
+        score: typeof data.score === "number" ? data.score : scoreFromResults(mode, breaches, platforms),
+        breaches,
+        platforms,
+      };
+    }
+
+    // Risultato fittizio usato come fallback se il backend non risponde.
+    function mockResult(mode, query) {
+      return mode === "email"
+        ? { mode, query, demo: true, breaches: MOCK_BREACHES, platforms: [] }
+        : { mode, query, demo: false, breaches: [], platforms: MOCK_PLATFORMS };
+    }
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click();
+      a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    // Report HTML lato client (fallback se il backend Premium non risponde).
+    function clientReportHtml(r) {
+      const meta = scoreMeta(r.score);
+      const rows = r.mode === "email"
+        ? r.breaches.map(b => `<tr><td><b>${b.name}</b>${b.year ? " · " + b.year : ""}</td><td>${b.data}</td><td style="color:#d6336c"><b>TROVATA</b></td></tr>`).join("")
+        : r.platforms.map(p => `<tr><td><b>${p.name}</b></td><td>${p.url}</td><td style="color:${p.status === "exposed" ? "#d6336c" : "#2b9348"}"><b>${p.status === "exposed" ? "TROVATO" : p.status === "clear" ? "LIBERO" : "INCERTO"}</b></td></tr>`).join("");
+      return `<!DOCTYPE html><html lang="it"><head><meta charset="utf-8"><title>Report ${r.query}</title>
+        <style>body{font-family:system-ui,sans-serif;max-width:760px;margin:40px auto;padding:0 20px;color:#1a2233}
+        h1{font-size:20px}.val{font-size:48px;font-weight:800;color:${meta.color.replace("var(--danger)","#d6336c").replace("var(--warn)","#e8910c").replace("var(--ok)","#2b9348")}}
+        table{width:100%;border-collapse:collapse;margin-top:16px;font-size:14px}td,th{text-align:left;padding:8px;border-bottom:1px solid #eee}
+        .note{background:#f4f7fb;border-radius:10px;padding:14px;margin-top:24px;font-size:13px;color:#445}</style></head>
+        <body><h1>🛡️ Report di esposizione · ${r.query}</h1>
+        <div class="val">${r.score}<span style="font-size:18px;color:#888">/100</span></div>
+        <div><b>${meta.label}</b> — ${meta.desc}</div>
+        <table><tbody>${rows}</tbody></table>
+        <div class="note"><b>Nota etica.</b> Report sulla tua esposizione o di chi ha dato consenso esplicito.${r.demo ? " <b>Dati dimostrativi</b> (backend non collegato)." : ""}</div>
+        </body></html>`;
+    }
+
     function Gauge({ score }) {
       const meta = scoreMeta(score);
       const r = 70, c = 2 * Math.PI * r;
@@ -469,10 +547,12 @@
       const [phase, setPhase] = useState("idle"); // idle | scanning | done | locked
       const [stepIdx, setStepIdx] = useState(0);
       const [scansUsed, setScansUsed] = useState(0);
+      const [premium, setPremium] = useState(false);
       const [result, setResult] = useState(null);
+      const [downloading, setDownloading] = useState(false);
       const timers = useRef([]);
 
-      const remaining = Math.max(0, FREE_SCANS - scansUsed);
+      const remaining = premium ? Infinity : Math.max(0, FREE_SCANS - scansUsed);
 
       const validate = () => {
         if (!value.trim()) return mode === "email" ? "Inserisci la tua email." : "Inserisci il tuo username.";
@@ -486,39 +566,100 @@
         timers.current = [];
       };
 
-      const runScan = useCallback(() => {
+      const runScan = useCallback(async () => {
         const v = validate();
         if (v) { setError(v); return; }
         setError("");
 
-        if (remaining <= 0) { setPhase("locked"); return; }
+        if (!premium && remaining <= 0) { setPhase("locked"); return; }
 
         reset();
         setResult(null);
         setPhase("scanning");
         setStepIdx(0);
 
-        // avanza gli step della scansione
+        // avanza gli step della scansione (animazione)
         SCAN_STEPS.forEach((_, i) => {
           timers.current.push(setTimeout(() => setStepIdx(i + 1), 650 * (i + 1)));
         });
+        // durata minima così l'animazione è sempre visibile, anche se l'API è veloce
+        const minDelay = new Promise(r => timers.current.push(setTimeout(r, 650 * (SCAN_STEPS.length + 1))));
 
-        // completa la scansione e mostra i risultati
-        timers.current.push(setTimeout(() => {
-          const breaches = MOCK_BREACHES;
-          const platforms = MOCK_PLATFORMS;
-          const score = scoreFromResults(mode, breaches, platforms);
-          setResult({
-            mode,
-            query: value.trim(),
-            score,
-            breaches,
-            platforms,
+        const query = value.trim();
+        let data, usedFallback = false, locked = false;
+        try {
+          const endpoint = mode === "email" ? "/api/scan/email" : "/api/scan/username";
+          const body = mode === "email" ? { email: query, consent } : { username: query, consent };
+          const res = await fetch(API_BASE + endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", ...(premium ? { "x-premium": "1" } : {}) },
+            body: JSON.stringify(body),
           });
+          if (res.status === 402) { locked = true; }
+          else if (!res.ok) {
+            const e = await res.json().catch(() => ({}));
+            throw new Error(e.error || ("Errore server " + res.status));
+          } else {
+            data = await res.json();
+          }
+        } catch (err) {
+          // Backend non raggiungibile → demo coi mock (la UI resta dimostrabile).
+          usedFallback = true;
+          data = mockResult(mode, query);
+        }
+
+        await minDelay;
+
+        if (locked) { setPhase("locked"); return; }
+
+        const norm = normalizeResult(data, mode, query);
+        norm.demo = norm.demo || usedFallback;
+        setResult(norm);
+
+        if (data.quota && typeof data.quota.remaining === "number") {
+          setScansUsed(FREE_SCANS - data.quota.remaining);
+        } else if (!premium) {
           setScansUsed(s => s + 1);
-          setPhase("done");
-        }, 650 * (SCAN_STEPS.length + 1)));
-      }, [mode, value, consent, remaining]);
+        }
+        setPhase("done");
+      }, [mode, value, consent, remaining, premium]);
+
+      const goPremium = () => {
+        // Demo: in produzione qui parte il flusso di pagamento.
+        setPremium(true);
+        setPhase("idle");
+        setError("");
+      };
+
+      const downloadReport = async () => {
+        if (!result) return;
+        setDownloading(true);
+        const payload = {
+          mode: result.mode,
+          query: result.query,
+          score: result.score,
+          demo: result.demo,
+          breaches: result.mode === "email"
+            ? result.breaches.map(b => ({ title: b.name, year: b.year, dataClasses: (b.data || "").split(", ") }))
+            : [],
+          platforms: result.mode === "username" ? result.platforms : [],
+        };
+        const filename = `footprint-report-${result.query.replace(/[^a-z0-9._-]/gi, "_").slice(0, 40)}.html`;
+        try {
+          const res = await fetch(API_BASE + "/api/report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-premium": "1" },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error();
+          triggerDownload(await res.blob(), filename);
+        } catch {
+          // Fallback: report generato lato client.
+          triggerDownload(new Blob([clientReportHtml(result)], { type: "text/html" }), filename);
+        } finally {
+          setDownloading(false);
+        }
+      };
 
       const onKey = (e) => { if (e.key === "Enter") runScan(); };
 
@@ -579,9 +720,11 @@
             <div className="err">{error}</div>
 
             <div className="quota">
-              {remaining > 0
-                ? <>Scansioni gratuite rimaste: <b>{remaining}</b> / {FREE_SCANS}</>
-                : <>Hai esaurito le scansioni gratuite. <b style={{color:'var(--warn)'}}>Passa a Premium →</b></>}
+              {premium
+                ? <>✨ <b>Premium attivo</b> · scansioni illimitate</>
+                : remaining > 0
+                  ? <>Scansioni gratuite rimaste: <b>{remaining}</b> / {FREE_SCANS}</>
+                  : <>Hai esaurito le scansioni gratuite. <b style={{color:'var(--warn)'}}>Passa a Premium →</b></>}
             </div>
           </div>
 
@@ -608,7 +751,7 @@
               <h3>Scansioni gratuite esaurite</h3>
               <p>Sblocca scansioni illimitate e il report scaricabile con Premium.</p>
               <button className="btn-premium" style={{maxWidth: 260, margin: "0 auto"}}
-                onClick={() => alert("Demo: qui parte il flusso di pagamento Premium.")}>
+                onClick={goPremium}>
                 ✨ Passa a Premium
               </button>
             </div>
@@ -619,7 +762,7 @@
             <div className="results">
               {/* Score */}
               <div className="score-card reveal" style={{ animationDelay: "0.05s" }}>
-                <div className="demo-pill">DATI DIMOSTRATIVI · backend non ancora collegato</div>
+                {result.demo && <div className="demo-pill">DATI DIMOSTRATIVI · HIBP non collegato</div>}
                 <Gauge score={result.score} />
                 <div className="score-label" style={{ color: scoreMeta(result.score).color }}>
                   {scoreMeta(result.score).label}
@@ -635,8 +778,18 @@
                 <>
                   <div className="section-title">
                     🗂️ Data breach noti
-                    <span className="count">{result.breaches.filter(b => b.sev === "found").length}</span>
+                    <span className="count">{result.breaches.length}</span>
                   </div>
+                  {result.breaches.length === 0 && (
+                    <div className="item reveal" style={{ animationDelay: "0.25s" }}>
+                      <div className="icon">✅</div>
+                      <div className="body">
+                        <div className="name">Nessun breach noto</div>
+                        <div className="meta">La tua email non compare nei breach pubblici conosciuti. Ottimo!</div>
+                      </div>
+                      <div className="badge clear">PULITA</div>
+                    </div>
+                  )}
                   {result.breaches.map((b, i) => (
                     <div key={b.name} className="item reveal" style={{ animationDelay: (0.25 + i * 0.12) + "s" }}>
                       <div className="icon">{b.icon}</div>
@@ -665,32 +818,47 @@
                         <div className="meta mono">{p.url.replace("{u}", result.query)}</div>
                       </div>
                       <div className={"badge " + (p.status === "exposed" ? "exposed" : "clear")}>
-                        {p.status === "exposed" ? "TROVATO" : "LIBERO"}
+                        {p.status === "exposed" ? "TROVATO" : p.status === "clear" ? "LIBERO" : "INCERTO"}
                       </div>
                     </div>
                   ))}
                 </>
               )}
 
-              {/* Premium upsell */}
-              <div className="premium reveal" style={{ animationDelay: "0.9s" }}>
-                <h3>✨ Sblocca il report completo</h3>
-                <p>La versione gratuita mostra una panoramica. Premium ti dà l'analisi completa e azionabile.</p>
-                <div className="perks">
-                  <div className="perk"><span className="c">✓</span> Scansioni illimitate (email + username)</div>
-                  <div className="perk"><span className="c">✓</span> Report PDF scaricabile e condivisibile</div>
-                  <div className="perk"><span className="c">✓</span> Consigli personalizzati per ridurre l'esposizione</div>
-                  <div className="perk"><span className="c">✓</span> Monitoraggio: avvisi sui nuovi breach</div>
+              {/* Premium: report scaricabile / upsell */}
+              {premium ? (
+                <div className="premium reveal" style={{ animationDelay: "0.9s" }}>
+                  <h3>✨ Premium attivo</h3>
+                  <p>Hai scansioni illimitate. Scarica il report completo o avvia una nuova scansione.</p>
+                  <div className="premium-actions">
+                    <button className="btn-ghost" onClick={() => { setPhase("idle"); setValue(""); setConsent(false); }}>
+                      Nuova scansione
+                    </button>
+                    <button className="btn-premium" onClick={downloadReport} disabled={downloading}>
+                      {downloading ? <><span className="spinner"></span>Genero…</> : "⬇️ Scarica report"}
+                    </button>
+                  </div>
                 </div>
-                <div className="premium-actions">
-                  <button className="btn-ghost" onClick={() => { setPhase("idle"); setValue(""); setConsent(false); }}>
-                    Nuova scansione
-                  </button>
-                  <button className="btn-premium" onClick={() => alert("Demo: qui parte il flusso di pagamento Premium.")}>
-                    ✨ Passa a Premium
-                  </button>
+              ) : (
+                <div className="premium reveal" style={{ animationDelay: "0.9s" }}>
+                  <h3>✨ Sblocca il report completo</h3>
+                  <p>La versione gratuita mostra una panoramica. Premium ti dà l'analisi completa e azionabile.</p>
+                  <div className="perks">
+                    <div className="perk"><span className="c">✓</span> Scansioni illimitate (email + username)</div>
+                    <div className="perk"><span className="c">✓</span> Report scaricabile e condivisibile (stampabile in PDF)</div>
+                    <div className="perk"><span className="c">✓</span> Consigli personalizzati per ridurre l'esposizione</div>
+                    <div className="perk"><span className="c">✓</span> Monitoraggio: avvisi sui nuovi breach</div>
+                  </div>
+                  <div className="premium-actions">
+                    <button className="btn-ghost" onClick={() => { setPhase("idle"); setValue(""); setConsent(false); }}>
+                      Nuova scansione
+                    </button>
+                    <button className="btn-premium" onClick={goPremium}>
+                      ✨ Passa a Premium
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 

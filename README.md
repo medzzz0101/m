@@ -7,7 +7,7 @@ su quali piattaforme pubbliche esiste lo username.
 > ⚠️ **Vincolo non negoziabile.** Lo strumento serve solo a controllare la
 > **propria** esposizione o quella di chi dà il **consenso esplicito**. Niente
 > ricerca di terzi a loro insaputa, niente scraping/ricerca di massa su persone
-> non consenzienti.
+> non consenzienti. Il consenso è obbligatorio sia nella UI sia lato backend.
 
 ---
 
@@ -15,55 +15,83 @@ su quali piattaforme pubbliche esiste lo username.
 
 | Fase | Stato |
 |------|-------|
-| **1. Frontend statico** (input + risultati finti animati) | ✅ **fatto** — questa demo |
-| 2. Backend proxy (Node/Python) verso API esterne | ⏳ prossimo |
-| 3. Integrazione Have I Been Pwned (email) | ⏳ |
-| 4. Check username stile Sherlock (piattaforme pubbliche) | ⏳ |
-| 5. Monetizzazione (free vs premium, report scaricabile) | ⏳ |
+| **1. Frontend statico** (input + risultati animati) | ✅ fatto |
+| **2. Backend proxy** (Node/Express, niente chiavi nel frontend) | ✅ fatto |
+| **3. Integrazione Have I Been Pwned** (email) | ✅ fatto (demo se manca la chiave) |
+| **4. Check username stile Sherlock** (piattaforme pubbliche) | ✅ fatto |
+| **5. Monetizzazione** (free vs premium, report scaricabile) | ✅ fatto (stub pagamento) |
+| 6. Pagamenti reali, account, monitoraggio continuo | ⏳ prossimo |
 
-## Demo (fase 1)
-
-Nessun build, nessun `npm install`. La demo è un singolo file `index.html` che
-carica React via CDN — pensato per avere **subito una demo visiva** (es. per un
-video).
+## Avvio rapido
 
 ```bash
-# basta aprire il file nel browser:
-open index.html        # macOS
-xdg-open index.html    # Linux
-
-# oppure servirlo (consigliato, evita problemi di CORS dei CDN):
-python3 -m http.server 8000
-# poi apri http://localhost:8000
+npm install
+cp .env.example .env       # opzionale: aggiungi la chiave HIBP
+npm start                  # http://localhost:3000
 ```
 
-### Cosa mostra la demo
-- Tab **Email** / **Username** con input e bottone *Scansiona*
-- Animazione di scansione con step progressivi e barra di avanzamento
-- **Reveal animato** dei risultati uno dopo l'altro (effetto "scena")
-- **Punteggio di esposizione** 0–100 con gauge circolare
-- Lista breach (email) o presenza su piattaforme (username)
-- Limite **2 scansioni gratuite** + upsell **Premium**
-- Checkbox di **consenso** obbligatoria prima di ogni scansione
+Senza chiave HIBP il check email gira in **modalità demo** (breach fittizi),
+così puoi provare tutto il flusso senza pagare l'API. Il check username
+funziona comunque davvero (interroga le piattaforme pubbliche).
 
-> I dati mostrati nella demo sono **fittizi** (vedi `MOCK_BREACHES` /
-> `MOCK_PLATFORMS` in `index.html`). Servono solo a far vedere il flusso visivo.
+> Vuoi solo la demo visiva, senza server? Apri direttamente `index.html`: il
+> frontend rileva l'assenza del backend e ricade automaticamente sui dati mock.
 
-## Architettura prevista (fase 2+)
+## Architettura
 
 ```
-[ Frontend React ]  ──►  [ Backend proxy ]  ──►  [ HIBP API ]   (email)
-   input + UI            (Node o Python)    └─►  [ check username ]  (piattaforme pubbliche)
-                          tiene la API key
-                          NIENTE chiavi nel frontend
+[ Frontend React ]  ──►  [ Backend Express ]  ──►  [ HIBP API ]        (email)
+   index.html            server/index.js       └─►  [ piattaforme pubbliche ]  (username)
+   input + UI animata    tiene la API key
+   nessun segreto        consenso + quota
 ```
 
-- La **chiave API di HIBP** (a pagamento) vive **solo** lato backend.
-- Nessun database all'inizio.
-- Free: 1–2 scansioni · Premium: scansioni illimitate + report scaricabile.
+Il frontend non conosce **mai** la chiave HIBP: ogni chiamata passa dal backend.
+
+### Endpoint
+
+| Metodo | Path | Descrizione |
+|--------|------|-------------|
+| `POST` | `/api/scan/email` | `{ email, consent }` → breach noti + punteggio |
+| `POST` | `/api/scan/username` | `{ username, consent }` → presenza su piattaforme + punteggio |
+| `POST` | `/api/report` | Premium (`x-premium: 1`) → report HTML scaricabile (stampabile in PDF) |
+| `GET`  | `/api/health` | stato server, configurazione HIBP, quota |
+
+- **Consenso**: senza `consent: true` il backend risponde `403`.
+- **Quota free**: `FREE_SCANS` (default 2) per visitatore, in-memory (niente DB).
+  Esaurita → `402`. Premium (`x-premium: 1`) bypassa la quota.
+- **Punteggio di esposizione** 0–100 calcolato lato server (`server/score.js`).
+
+### Struttura
+
+```
+index.html              frontend (React via CDN, zero build)
+server/
+  index.js              Express: routing, consenso, quota, static
+  hibp.js               client Have I Been Pwned (demo se manca la chiave)
+  usernameCheck.js      check presenza username (stile Sherlock, concorrenza limitata)
+  score.js              punteggio di esposizione + livelli
+  report.js             generatore report HTML (Premium)
+.env.example            config (HIBP_API_KEY, PORT, FREE_SCANS)
+```
+
+## Funzionalità
+
+- Tab **Email** / **Username** con scansione animata e **reveal progressivo** dei risultati
+- **Punteggio di esposizione** con gauge circolare (basso / medio / alto)
+- **Email** → lista data breach noti (HIBP); **username** → presenza pubblica su
+  GitHub, Reddit, Instagram, TikTok, GitLab, Steam, Telegram, Twitch
+- **Free**: 2 scansioni · **Premium**: scansioni illimitate + report scaricabile
+- **Consenso obbligatorio** + banner etico
+
+## Note sui check username
+
+I check stile Sherlock leggono solo lo **status della pagina profilo pubblica**
+(esiste / non esiste). Alcune piattaforme con login wall o anti-bot possono
+restituire esito **INCERTO**: è una limitazione nota dell'approccio, non un bug.
 
 ## Etica & ambito
 
-Strumento difensivo. Pensato per: ridurre la propria superficie di esposizione,
-sapere dove cambiare password, attivare la 2FA. **Non** è uno strumento di
-profilazione di terzi.
+Strumento **difensivo**. Pensato per ridurre la propria superficie di esposizione:
+sapere dove cambiare password, attivare la 2FA, rimuovere account pubblici inutili.
+**Non** è uno strumento di profilazione di terzi.
