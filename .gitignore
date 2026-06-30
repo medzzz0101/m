@@ -19,3 +19,9 @@ data/reports/
 .DS_Store
 .idea/
 .vscode/
+
+# Ephemeral runtime
+data/ping_test.py
+data/public_url.txt
+data/server.log
+data/tunnel.log
