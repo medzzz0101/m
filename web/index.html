@@ -10,9 +10,11 @@
   <!-- PWA: manifest makes it installable; theme-color matches the shell -->
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="/static/icons/icon-192.png" />
 
-  <!-- Leaflet (maps) — used by image-geolocation. CSS up front; JS deferred. -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet (maps) — vendored locally (the CDN is blocked by egress + it
+       makes the PWA work offline). CSS up front; JS deferred below. -->
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css" />
 
   <!-- Our modular styles. Split by concern so each file stays readable. -->
   <link rel="stylesheet" href="/static/css/tokens.css" />
@@ -62,30 +64,46 @@
 
         <!-- ===== Workspace view ===== -->
         <section class="view" id="view-workspace">
-          <!-- Hero input -->
-          <div class="hero">
-            <h1 class="hero-title">Investigate anything public.</h1>
-            <p class="hero-sub">
-              Paste a domain, IP, URL, BTC/ETH address, or username — or upload an
-              image. The engine routes it to every compatible module and builds a
-              correlation graph.
-            </p>
 
-            <div class="input-row">
-              <div class="input-wrap">
-                <span class="input-type-pill" id="type-pill">auto</span>
-                <input id="target-input" class="target-input mono" type="text"
-                       placeholder="example.com  ·  bc1q…  ·  8.8.8.8  ·  @handle"
-                       autocomplete="off" autocapitalize="off" spellcheck="false" />
-              </div>
+          <!-- ----- HERO (landing) ----- -->
+          <div class="hero landing-only" id="hero">
+            <div class="hero-badge">
+              <span class="hero-badge-dot"></span>
+              PUBLIC-DATA · INFRASTRUCTURE · ON-CHAIN · IMAGE FORENSICS
+            </div>
+            <h1 class="hero-title">See the whole picture.</h1>
+            <p class="hero-sub">
+              One input, every compatible module, a single correlation graph.
+              Infrastructure, blockchain, and image-geolocation OSINT — all
+              public-data, all in one console.
+            </p>
+          </div>
+
+          <!-- ----- COMMAND BAR (always present, but framed, not naked) ----- -->
+          <div class="command" id="command">
+            <div class="input-wrap">
+              <span class="input-type-pill" id="type-pill">auto</span>
+              <input id="target-input" class="target-input mono" type="text"
+                     placeholder="domain · IP · URL · BTC/ETH · @username"
+                     autocomplete="off" autocapitalize="off" spellcheck="false" />
+              <button id="clear-btn" class="clear-btn" title="Clear" hidden>✕</button>
               <button id="run-btn" class="btn-primary">Run</button>
             </div>
 
-            <!-- Image upload affordance (shown for image modules) -->
-            <div class="upload-row" id="upload-row">
+            <!-- Try-this example chips (tap to fill) -->
+            <div class="chips landing-only" id="example-chips">
+              <button class="chip" data-fill="example.com">example.com</button>
+              <button class="chip" data-fill="1.1.1.1">1.1.1.1</button>
+              <button class="chip" data-fill="torvalds">@torvalds</button>
+              <button class="chip" data-fill="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">btc genesis addr</button>
+              <button class="chip chip-upload" id="chip-upload">⤓ upload image</button>
+            </div>
+
+            <!-- Image upload affordance -->
+            <div class="upload-row" id="upload-row" hidden>
               <label class="upload-chip">
                 <input type="file" id="file-input" accept="image/*" hidden />
-                <span>＋ Upload image (EXIF / GPS)</span>
+                <span>＋ Choose image (EXIF / GPS)</span>
               </label>
               <span class="upload-name mono" id="upload-name"></span>
             </div>
@@ -100,23 +118,29 @@
             </div>
           </div>
 
-          <!-- Results grid: cards stream in here -->
+          <!-- ----- STATS STRIP (landing) ----- -->
+          <div class="stat-strip landing-only" id="stat-strip"></div>
+
+          <!-- ----- CAPABILITY DECK (landing) ----- -->
+          <div class="deck-wrap landing-only" id="deck-wrap">
+            <div class="deck-head">
+              <span>Capabilities</span>
+              <span class="deck-hint mono">tap a card to load an example</span>
+            </div>
+            <div class="deck" id="deck"></div>
+          </div>
+
+          <!-- ----- RESULTS (shown after a run) ----- -->
           <div class="results-head" id="results-head" hidden>
             <div class="results-meta">
               <span id="results-summary" class="mono"></span>
             </div>
             <div class="results-actions">
-              <button class="btn-ghost" id="view-graph-btn">◇ Graph view</button>
+              <button class="btn-ghost" id="view-graph-btn">◇ Graph</button>
+              <button class="btn-ghost" id="new-search-btn">＋ New</button>
             </div>
           </div>
           <div class="results-grid" id="results"></div>
-
-          <!-- Empty state -->
-          <div class="empty-state" id="empty-state">
-            <div class="empty-mark">⌖</div>
-            <p>No run yet. Enter a target and press <strong>Run</strong>, or press
-              <span class="kbd">⌘K</span> to browse modules.</p>
-          </div>
         </section>
 
         <!-- ===== Graph view (built in Phase 2; placeholder shell now) ===== -->
@@ -150,7 +174,7 @@
   <div class="toast-host" id="toast-host" aria-live="polite"></div>
 
   <!-- Scripts: load order matters (helpers -> graph -> app). All ES modules. -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+  <script src="/static/vendor/leaflet/leaflet.js" defer></script>
   <script src="/static/js/util.js" type="module"></script>
   <script src="/static/js/graph.js" type="module"></script>
   <script src="/static/js/app.js" type="module"></script>

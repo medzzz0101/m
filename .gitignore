@@ -25,3 +25,6 @@ data/ping_test.py
 data/public_url.txt
 data/server.log
 data/tunnel.log
+
+# All runtime data (cache, uploads, reports, tunnels, test artifacts)
+/data/

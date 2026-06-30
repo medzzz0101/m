@@ -5,6 +5,10 @@
    ========================================================================== */
 
 * { box-sizing: border-box; }
+/* CRITICAL: a class like `.cmdk-overlay { display:flex }` has higher specificity
+   than the browser's built-in `[hidden]` rule, which would leave "hidden"
+   full-screen overlays visible and swallowing every tap. Force hidden to win. */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0;

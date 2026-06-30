@@ -45,9 +45,87 @@ async function loadModules() {
       (state.byCat[m.category] ||= []).push(m);
     renderSidebar();
     renderTabbar();
+    renderStats();
+    renderDeck();
   } catch (e) {
     toast("Failed to load modules");
   }
+}
+
+// Small dashboard of headline numbers on the landing.
+function renderStats() {
+  const strip = $("#stat-strip");
+  if (!strip) return;
+  const cats = Object.keys(state.byCat).length;
+  const sources = new Set(state.modules.map((m) => m.name)).size;
+  strip.innerHTML = "";
+  const items = [
+    [String(state.modules.length), "Modules"],
+    [String(cats), "Domains"],
+    [String(sources), "Data sources"],
+    ["100%", "Public data"],
+  ];
+  for (const [num, label] of items) {
+    strip.append(el("div", { class: "stat" },
+      el("div", { class: "stat-num", html: num.replace("%", '<span class="accent">%</span>') }),
+      el("div", { class: "stat-label" }, label)));
+  }
+}
+
+// The capability deck — every module as a tappable card, grouped by category.
+function renderDeck() {
+  const deck = $("#deck");
+  if (!deck) return;
+  deck.innerHTML = "";
+  for (const [key, title] of CATS) {
+    const mods = state.byCat[key];
+    if (!mods?.length) continue;
+    deck.append(el("div", { class: "deck-cat-title" }, title));
+    for (const m of mods) deck.append(deckCard(m));
+  }
+}
+function deckCard(m) {
+  const accepts = el("div", { class: "deck-accepts" },
+    ...m.accepts.map((a) => el("span", {
+      class: "type-tag" + (m.requires_authorized_target ? " gated" : ""),
+    }, a)));
+  const card = el("div", {
+    class: "deck-card", title: m.description,
+    onclick: () => pickModule(m),
+    onmousemove: (e) => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    },
+  },
+    el("div", { class: "deck-ico" }, icon(m.key, m.category)),
+    el("div", { class: "deck-info" },
+      el("div", { class: "deck-name" }, m.name),
+      el("div", { class: "deck-sub" }, m.subtitle || m.description.slice(0, 70)),
+      accepts));
+  return card;
+}
+
+// One canonical example value per input type, so tapping a card is instant.
+const EXAMPLES = {
+  domain: "example.com", ip: "1.1.1.1", url: "https://example.com",
+  username: "torvalds", email: "test@example.com",
+  btc_address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+  eth_address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+  hash: "5d41402abc4b2a76b9719d911017c592", image: "", file: "",
+};
+function pickModule(m) {
+  closeSidebar();
+  // Image modules: open the file picker instead of filling text.
+  if (m.accepts.includes("image") || m.accepts.includes("file")) {
+    $("#upload-row").hidden = false;
+    $("#file-input").click();
+    return;
+  }
+  const ex = m.accepts.map((a) => EXAMPLES[a]).find((v) => v);
+  if (ex) { $("#target-input").value = ex; onType(); }
+  $("#target-input").focus();
+  $("#target-input").scrollIntoView({ behavior: "smooth", block: "center" });
+  toast(`${m.name} · try ${ex || "an upload"}`);
 }
 
 // --------------------------------------------------------------- sidebar ----
@@ -92,17 +170,8 @@ function setActiveTab(id) {
     t.classList.toggle("active", t.dataset.tab === id));
 }
 
-// When a sidebar/module entry is tapped, focus the input (and hint the type).
-function quickPick(m) {
-  closeSidebar();
-  showView("workspace");
-  const inp = $("#target-input");
-  inp.focus();
-  toast(`${m.name} · accepts ${m.accepts.join(", ")}`);
-  // Toggle the upload affordance if this is an image/file module.
-  const isImg = m.accepts.includes("image") || m.accepts.includes("file");
-  $("#upload-row").style.display = isImg ? "flex" : "none";
-}
+// When a sidebar entry is tapped, behave like tapping its deck card.
+function quickPick(m) { showView("workspace"); pickModule(m); }
 
 // ----------------------------------------------------------------- UI bind --
 function bindUI() {
@@ -111,6 +180,21 @@ function bindUI() {
     if (e.key === "Enter") runTarget();
   });
   $("#target-input").addEventListener("input", debounce(onType, 220));
+  $("#target-input").addEventListener("input", () => {
+    $("#clear-btn").hidden = !$("#target-input").value;
+  });
+  $("#clear-btn").addEventListener("click", resetToLanding);
+  $("#new-search-btn").addEventListener("click", resetToLanding);
+
+  // Example chips fill the input (and image chip opens the picker).
+  $$(".chip[data-fill]").forEach((c) =>
+    c.addEventListener("click", () => {
+      $("#target-input").value = c.dataset.fill;
+      onType(); $("#clear-btn").hidden = false; $("#target-input").focus();
+    }));
+  $("#chip-upload").addEventListener("click", () => {
+    $("#upload-row").hidden = false; $("#file-input").click();
+  });
 
   $("#menu-btn")?.addEventListener("click", toggleSidebar);
   $("#cmdk-trigger").addEventListener("click", openCmdk);
@@ -139,6 +223,7 @@ async function onType() {
   const v = $("#target-input").value.trim();
   const pill = $("#type-pill");
   const gate = $("#scope-gate");
+  $("#clear-btn").hidden = !v;
   if (!v) { pill.textContent = "auto"; gate.hidden = true; return; }
   try {
     const d = await api(`/api/detect?value=${encodeURIComponent(v)}`);
@@ -163,8 +248,8 @@ async function runTarget() {
   const value = $("#target-input").value.trim();
   if (!value && !uploadedFile) { toast("Enter a target first"); return; }
 
-  // Reveal results area, hide empty state.
-  $("#empty-state").hidden = true;
+  // Switch from landing to results mode (hides hero/deck/stats via CSS).
+  document.body.classList.add("has-results");
   $("#results-head").hidden = false;
   const grid = $("#results");
   grid.innerHTML = "";
@@ -408,6 +493,22 @@ function progress(on) {
 }
 function toggleSidebar() { $("#sidebar").classList.toggle("open"); }
 function closeSidebar() { $("#sidebar").classList.remove("open"); }
+
+// Return to the landing (hero + deck + stats), clearing the last run.
+function resetToLanding() {
+  document.body.classList.remove("has-results");
+  $("#results").innerHTML = "";
+  $("#results-head").hidden = true;
+  $("#target-input").value = "";
+  $("#clear-btn").hidden = true;
+  $("#type-pill").textContent = "auto";
+  $("#scope-gate").hidden = true;
+  $("#upload-row").hidden = true;
+  uploadedFile = null;
+  $("#upload-name").textContent = "";
+  showView("workspace");
+  $("#target-input").focus();
+}
 
 async function pingHealth() {
   try {
