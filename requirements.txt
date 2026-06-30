@@ -1,0 +1,18 @@
+# ---------------------------------------------------------------------------
+# OSINT Correlation Engine — Python dependencies
+# Kept intentionally minimal. Each line notes WHY the dependency exists so you
+# can reason about the footprint while you learn.
+# ---------------------------------------------------------------------------
+
+fastapi==0.115.6          # async web framework (our API + static serving)
+uvicorn[standard]==0.34.0 # ASGI server that actually runs FastAPI
+httpx==0.28.1             # async HTTP client for talking to public OSINT APIs
+python-multipart==0.0.20  # lets FastAPI accept file uploads (image forensics)
+jinja2==3.1.5             # tiny templating (used for the report export)
+
+# --- OSINT helpers (all optional-but-recommended, used by specific modules) ---
+dnspython==2.7.0          # DNS lookups (A/AAAA/MX/TXT/NS/CNAME/SOA, DNSSEC)
+Pillow==11.1.0            # image decoding + EXIF access for geolocation
+exifread==3.0.0           # robust EXIF/GPS tag extraction (handles odd cameras)
+mmh3==5.0.1               # MurmurHash3 — favicon hashing for infra correlation
+python-whois==0.9.5       # fallback WHOIS when RDAP has no data

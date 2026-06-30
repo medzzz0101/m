@@ -1,0 +1,15 @@
+{
+  "name": "OSINT Correlation Engine",
+  "short_name": "Correlate",
+  "description": "Self-hosted, mobile-first OSINT correlation engine: infrastructure, blockchain, and image-geolocation analysis under one graph.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0c",
+  "theme_color": "#0a0a0c",
+  "categories": ["utilities", "security", "productivity"],
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

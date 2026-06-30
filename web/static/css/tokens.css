@@ -1,0 +1,75 @@
+/* ==========================================================================
+   tokens.css — the design system in one place.
+   Every colour, space, radius, shadow, and timing the UI uses is a variable
+   here. Change the accent in ONE spot and the whole product re-themes.
+   The palette follows the brief: deep near-black, elevated surfaces, ONE
+   confident violet accent used sparingly.
+   ========================================================================== */
+:root {
+  /* --- Surfaces (dark, layered) --- */
+  --bg:            #0a0a0c;   /* app background, near-black */
+  --surface:       #141418;   /* elevated cards / sidebar */
+  --surface-2:     #1b1b21;   /* hover / nested surfaces */
+  --surface-3:     #232330;   /* active / selected */
+
+  /* --- Borders & lines (soft, 1px) --- */
+  --border:        rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.13);
+
+  /* --- Text hierarchy --- */
+  --text:          #ecebf2;   /* primary */
+  --text-2:        #a8a6b8;   /* secondary */
+  --text-3:        #6d6b7e;   /* muted / captions */
+
+  /* --- THE accent. Violet. Used sparingly for emphasis & actions. --- */
+  --accent:        #8b7cff;
+  --accent-soft:   rgba(139,124,255,0.14);
+  --accent-line:   rgba(139,124,255,0.40);
+  --accent-glow:   rgba(139,124,255,0.30);
+
+  /* --- Semantic pills (confidence / status). Muted, never neon. --- */
+  --good:   #5ad6a0;  --good-soft:   rgba(90,214,160,0.13);
+  --warn:   #e8c468;  --warn-soft:   rgba(232,196,104,0.13);
+  --bad:    #f08a8a;  --bad-soft:    rgba(240,138,138,0.13);
+  --info:   #7fb6f0;  --info-soft:   rgba(127,182,240,0.13);
+
+  /* --- Node-type colours for the graph view (consistent everywhere) --- */
+  --n-domain: #8b7cff;  --n-ip: #7fb6f0;  --n-subdomain:#a99bff;
+  --n-host: #5ad6a0;    --n-tech:#e8c468; --n-cert:#f0a07f;
+  --n-asn:#9d7ff0;      --n-btc_address:#f7931a; --n-eth_address:#a0a0f0;
+  --n-tx:#c0c0d0;       --n-image:#5ad6a0; --n-geo:#f08a8a;
+  --n-username:#e892d0; --n-org:#ffffff;  --n-service:#7fb6f0;
+  --n-email:#e8c468;    --n-favicon:#a99bff; --n-default:#6d6b7e;
+
+  /* --- Type --- */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter,
+             system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace,
+               Menlo, Consolas, monospace;
+
+  /* --- Spacing scale (8px-ish rhythm) --- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+  --s6: 32px; --s7: 48px; --s8: 64px;
+
+  /* --- Radii --- */
+  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 22px; --r-pill: 999px;
+
+  /* --- Shadows (soft, low, dark-friendly) --- */
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-2: 0 8px 24px rgba(0,0,0,0.45);
+  --shadow-pop: 0 24px 60px rgba(0,0,0,0.6);
+
+  /* --- Motion (150–250ms, the brief's range) --- */
+  --t-fast: 150ms cubic-bezier(.4,0,.2,1);
+  --t-med:  220ms cubic-bezier(.4,0,.2,1);
+
+  /* --- Layout metrics --- */
+  --sidebar-w: 268px;
+  --topbar-h: 56px;
+  --tabbar-h: 60px;
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
