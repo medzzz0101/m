@@ -12,7 +12,9 @@
    Bump CACHE_VERSION whenever shell assets change to invalidate old caches.
    ========================================================================== */
 
-const CACHE_VERSION = "osint-shell-v1";
+// Bump this whenever shell assets change — it invalidates old caches so phones
+// pick up the new UI instead of a stale one.
+const CACHE_VERSION = "osint-shell-v2";
 const SHELL = [
   "/",
   "/static/css/tokens.css",
@@ -21,6 +23,8 @@ const SHELL = [
   "/static/js/util.js",
   "/static/js/graph.js",
   "/static/js/app.js",
+  "/static/vendor/leaflet/leaflet.css",
+  "/static/vendor/leaflet/leaflet.js",
   "/manifest.webmanifest",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
