@@ -30,6 +30,12 @@ const TIER_META = {
   ultra:   { name: "Ultra",   color: "#e892d0", power: 5, blurb: "Heavy attack-surface" },
   master:  { name: "Master",  color: "#f7c948", power: 6, blurb: "Everything, incl. active" },
 };
+// Deep Scan: after a run, auto-pivot the top nodes. How many expansions is
+// gated by the plan (more power on higher tiers).
+state.deep = localStorage.getItem("deep") === "1";
+const DEEP_BUDGET = { base: 0, premium: 2, elite: 3, mega: 5, ultra: 7, master: 10 };
+const deepBudget = () => DEEP_BUDGET[state.plan] ?? 0;
+
 const tierIdx = (t) => Math.max(0, state.tiers.indexOf(t));
 const planIdx = () => tierIdx(state.plan);
 const isUnlocked = (m) => tierIdx(m.tier || "base") <= planIdx();
@@ -132,8 +138,53 @@ function setPlan(t) {
   renderPlanBox();
   renderStats();
   renderDeck();
-  if (state.lastRun) {}  // (leave existing results as-is)
+  updateDeepHint();
   toast(`${TIER_META[t]?.name || t} plan — ${state.modules.filter(isUnlocked).length} modules unlocked`);
+}
+
+function updateDeepHint() {
+  const b = deepBudget();
+  $("#deep-hint").textContent = state.deep
+    ? (b > 0 ? `auto-pivot ×${b} (${TIER_META[state.plan]?.name})`
+             : `needs a paid plan`)
+    : "auto-expand the graph";
+}
+
+// After a normal run, auto-pivot the highest-value pivotable nodes to grow the
+// correlation graph — bounded by the plan's Deep-Scan budget.
+async function autoDeepScan(out) {
+  const budget = deepBudget();
+  if (!state.deep || budget <= 0 || !out.graph) return;
+  const PIVOTABLE = new Set(["domain", "subdomain", "ip"]);
+  const done = new Set([out.value.toLowerCase()]);
+  progress(true);
+  try {
+    let expansions = 0;
+    // Rank nodes by degree; expand the most connected pivotable ones.
+    const ranked = [...out.graph.nodes]
+      .filter((n) => PIVOTABLE.has(n.type))
+      .sort((a, b) => (b.degree || 0) - (a.degree || 0));
+    for (const node of ranked) {
+      if (expansions >= budget) break;
+      if (done.has(node.value.toLowerCase())) continue;
+      done.add(node.value.toLowerCase());
+      try {
+        const sub = await api("/api/run", {
+          method: "POST",
+          body: JSON.stringify({ value: node.value, only: [...allowedKeys()] }),
+        });
+        mergeIntoLastRun(sub);
+        if (state.graph) state.graph.mergeData(sub.graph);
+        expansions++;
+        const g = state.lastRun.graph.stats;
+        $("#results-summary").textContent =
+          `deep scan · ${g.node_count} nodes / ${g.edge_count} edges · ${expansions} pivots`;
+      } catch { /* skip a failed pivot */ }
+    }
+    if (expansions) toast(`⚡ Deep scan: +${expansions} pivots`);
+  } finally {
+    progress(false);
+  }
 }
 
 // --- Pricing / upgrade page -------------------------------------------------
@@ -382,6 +433,17 @@ function bindUI() {
   });
 
   // Password exposure checker (k-anonymity, entirely on-device).
+  // Deep Scan toggle.
+  const deepBtn = $("#deep-toggle");
+  deepBtn.setAttribute("aria-pressed", state.deep ? "true" : "false");
+  updateDeepHint();
+  deepBtn.addEventListener("click", () => {
+    state.deep = !state.deep;
+    localStorage.setItem("deep", state.deep ? "1" : "0");
+    deepBtn.setAttribute("aria-pressed", state.deep ? "true" : "false");
+    updateDeepHint();
+  });
+
   $("#chip-pw").addEventListener("click", openPwCheck);
   $("#pw-close").addEventListener("click", () => ($("#pwcheck").hidden = true));
   $("#pwcheck").addEventListener("click", (e) => {
@@ -536,6 +598,7 @@ async function runTarget() {
     if (g) $("#results-summary").textContent =
       `${det.label} · ${out.results.length} modules · ${g.node_count} nodes / ${g.edge_count} edges`;
     setupResultsToolbar(out.results);
+    autoDeepScan(out);   // power feature: auto-expand the graph (plan-gated)
   } catch (e) {
     toast("Run failed: " + e.message);
   } finally {

@@ -105,6 +105,25 @@
 }
 .clear-btn:hover { color: var(--text); background: var(--surface-2); }
 
+/* ----- Deep Scan toggle ----- */
+.deep-row { margin-top: var(--s3); }
+.deep-toggle {
+  display: inline-flex; align-items: center; gap: 10px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-pill); padding: 8px 14px 8px 8px; transition: all var(--t-fast);
+}
+.deep-toggle[aria-pressed="true"] { border-color: var(--tier-line, var(--accent-line));
+  background: var(--tier-soft, var(--accent-soft));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--tier, var(--accent)) 25%, transparent); }
+.deep-track { width: 34px; height: 20px; border-radius: 999px;
+  background: var(--surface-3); position: relative; transition: background var(--t-fast); }
+.deep-toggle[aria-pressed="true"] .deep-track { background: var(--tier, var(--accent)); }
+.deep-knob { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; transition: transform var(--t-fast); }
+.deep-toggle[aria-pressed="true"] .deep-knob { transform: translateX(14px); }
+.deep-text { font-size: 13px; font-weight: 700; color: var(--text); }
+.deep-hint { font-size: 10px; color: var(--text-3); }
+
 /* ----- Example chips ----- */
 .chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
 .chip {

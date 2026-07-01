@@ -48,6 +48,7 @@ class InputType(str, Enum):
     TEXT = "text"
     HASH = "hash"
     PHONE = "phone"
+    MAC = "mac"
 
 
 # ---------------------------------------------------------------------------

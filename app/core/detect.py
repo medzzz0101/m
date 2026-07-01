@@ -41,6 +41,9 @@ _DOMAIN = re.compile(
     r"(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))+$"
 )
 
+# MAC address — six hex octets separated by : or - (or bare 12 hex).
+_MAC = re.compile(r"^([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2}$")
+
 # Phone — an optional +, then 7–15 digits with common separators.
 _PHONE = re.compile(r"^\+?[0-9][0-9\s\-().]{5,18}[0-9]$")
 
@@ -86,6 +89,10 @@ def detect(value: str) -> InputType:
     if _HASH.match(v):
         return InputType.HASH
 
+    # 6a. MAC address (six hex octets).
+    if _MAC.match(v):
+        return InputType.MAC
+
     # 6b. Phone number (optional +, mostly digits, 7–15 significant digits).
     digits = re.sub(r"\D", "", v)
     if _PHONE.match(v) and 7 <= len(digits) <= 15 and (
@@ -119,4 +126,5 @@ TYPE_LABELS: dict[InputType, str] = {
     InputType.TEXT: "Text",
     InputType.HASH: "Hash",
     InputType.PHONE: "Phone",
+    InputType.MAC: "MAC address",
 }

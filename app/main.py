@@ -84,7 +84,7 @@ TIER_MAP = {
     # Elite — full fingerprinting + more social + more forensics.
     "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
               "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
-              "image_phash", "sun_calc", "phone_info"],
+              "image_phash", "sun_calc", "phone_info", "hsts_preload", "mac_lookup"],
     # Mega — passive exposure, CVEs, scoring, deep social.
     "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
              "subdomain_brute", "threat_feeds", "tiktok", "discord",
