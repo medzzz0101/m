@@ -67,37 +67,44 @@ class EmailExposureModule(BaseModule):
         except Exception:
             findings.append({"label": "Gravatar", "summary": "check failed"})
 
-        # 2. Per-EMAIL breach check via XposedOrNot (free, no key). Returns the
-        #    NAMES of breaches this exact address appears in — never passwords or
-        #    any leaked value. This is the "am I in a breach" self-exposure check.
+        # 2. Per-EMAIL breach check — AGGREGATED across multiple free sources for
+        #    broad coverage. We collect only the NAMES of breaches (and dates /
+        #    data-type categories) — never passwords or any leaked value.
+        breaches: dict[str, str] = {}   # name -> date/label
+        data_types: set[str] = set()
+        risk_label = None
+
+        # 2a. XposedOrNot (breach names).
         try:
             xon = await fetch_json(
                 ctx, f"https://api.xposedornot.com/v1/check-email/{email}",
                 ttl=3600, namespace="xon",
                 headers={"User-Agent": "osint-engine-self-exposure"})
-            breach_list = []
             if isinstance(xon, dict) and xon.get("breaches"):
-                # Shape: {"breaches": [[ "Name1", "Name2", ... ]]}
-                first = xon["breaches"][0] if xon["breaches"] else []
-                breach_list = [b for b in first if b]
-            if breach_list:
-                findings.append({
-                    "label": "⚠ This email appears in breaches",
-                    "summary": f"{len(breach_list)} breach(es) — change reused "
-                               "passwords & enable 2FA",
-                    "values": sorted(breach_list),
-                    "confidence": "high"})
-            else:
-                findings.append({"label": "This email in breaches",
-                                 "summary": "Not found in XposedOrNot — good news.",
-                                 "confidence": "info"})
-            raw["xposedornot"] = breach_list
-        except Exception as exc:  # noqa: BLE001
-            findings.append({"label": "Per-email breach check",
-                             "summary": f"XposedOrNot lookup failed: {exc}"})
+                for sub in xon["breaches"]:            # flatten all sub-lists
+                    for name in (sub or []):
+                        if name:
+                            breaches.setdefault(name, "")
+        except Exception:
+            pass
 
-        # 2b. Exposure analytics (risk score + CATEGORIES of exposed data — still
-        #     just metadata, never the values themselves).
+        # 2b. LeakCheck public (sources: name + date) — a different, large dataset.
+        try:
+            lc = await fetch_json(
+                ctx, f"https://leakcheck.io/api/public?check={email}",
+                ttl=3600, namespace="leakcheck",
+                headers={"User-Agent": "osint-engine-self-exposure"})
+            if isinstance(lc, dict):
+                for s in lc.get("sources", []) or []:
+                    nm = s.get("name")
+                    if nm:
+                        breaches[nm] = s.get("date", "") or breaches.get(nm, "")
+                for f in lc.get("fields", []) or []:
+                    data_types.add(f)
+        except Exception:
+            pass
+
+        # 2c. XposedOrNot analytics (risk level + exposed data categories).
         try:
             an = await fetch_json(
                 ctx, f"https://api.xposedornot.com/v1/breach-analytics?email={email}",
@@ -105,19 +112,37 @@ class EmailExposureModule(BaseModule):
                 headers={"User-Agent": "osint-engine-self-exposure"})
             risk = (((an or {}).get("BreachMetrics") or {}).get("risk") or [{}])
             risk_label = risk[0].get("risk_label") if risk else None
-            xposed = (((an or {}).get("ExposedBreaches") or {})
-                      .get("breaches_details") or [])
-            data_types = sorted({d for b in xposed
-                                 for d in (b.get("xposed_data", "") or "").split(";") if d})
-            if risk_label:
-                findings.append({"label": "Risk level", "summary": risk_label})
-            if data_types:
-                findings.append({"label": "Types of data exposed (categories)",
-                                 "values": data_types[:20],
-                                 "note": "Categories only — passwords/values are "
-                                         "never retrieved."})
+            for b in (((an or {}).get("ExposedBreaches") or {})
+                      .get("breaches_details") or []):
+                for d in (b.get("xposed_data", "") or "").split(";"):
+                    if d:
+                        data_types.add(d)
         except Exception:
             pass
+
+        if breaches:
+            listed = sorted(f"{n}{f'  ({d})' if d else ''}"
+                            for n, d in breaches.items())
+            findings.append({
+                "label": "⚠ This email appears in breaches",
+                "summary": f"{len(breaches)} breach(es) across free sources — "
+                           "change reused passwords & enable 2FA",
+                "values": listed,
+                "confidence": "high"})
+        else:
+            findings.append({"label": "This email in breaches",
+                             "summary": "Not found in the free breach sources — "
+                                        "good news (a paid HIBP key checks more).",
+                             "confidence": "info"})
+        if risk_label:
+            findings.append({"label": "Risk level", "summary": risk_label})
+        if data_types:
+            findings.append({"label": "Types of data exposed (categories)",
+                             "values": sorted(data_types)[:24],
+                             "note": "Categories only — passwords/values are never "
+                                     "retrieved."})
+        raw["breach_sources"] = {"count": len(breaches),
+                                 "names": sorted(breaches)}
 
         # 3. Breaches affecting the domain (public catalogue, no key).
         try:

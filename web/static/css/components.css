@@ -63,17 +63,19 @@
 .clear-btn:hover { color: var(--text); background: var(--surface-2); }
 
 /* ----- Example chips ----- */
-.chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s3); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s2); margin-top: var(--s4); }
 .chip {
-  font-family: var(--font-mono); font-size: 12px; color: var(--text-2);
-  background: var(--surface); border: 1px solid var(--border);
-  padding: 7px 12px; border-radius: var(--r-pill); cursor: pointer;
-  transition: all var(--t-fast);
+  font-family: var(--font-mono); font-size: 13px; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  padding: 10px 15px; min-height: 40px; border-radius: var(--r-pill); cursor: pointer;
+  transition: all var(--t-fast); font-weight: 500;
 }
-.chip:hover { border-color: var(--accent-line); color: var(--text);
-  transform: translateY(-1px); }
+.chip:hover { border-color: var(--accent-line); color: #fff;
+  background: var(--accent-soft); transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--accent-glow); }
+.chip:active { transform: scale(0.95); }
 .chip-upload { color: var(--accent); border-color: var(--accent-line);
-  background: var(--accent-soft); }
+  background: var(--accent-soft); font-weight: 600; }
 
 /* ----- Stats strip ----- */
 .stat-strip {
@@ -179,22 +181,38 @@ body.has-results .landing-only { display: none !important; }
 .target-input::placeholder { color: var(--text-3); }
 
 .btn-primary {
-  flex: 0 0 auto; padding: 0 var(--s5); border-radius: var(--r-md);
-  background: var(--accent); color: #0a0a0c; font-weight: 650; font-size: 14px;
+  flex: 0 0 auto; padding: 0 var(--s5); min-height: 48px; border-radius: var(--r-md);
+  background: linear-gradient(135deg, #9d8cff, var(--accent) 60%, #6f5cf0);
+  color: #0a0a0c; font-weight: 700; font-size: 15px;
   border: none; cursor: pointer; letter-spacing: 0.01em;
-  box-shadow: 0 4px 16px var(--accent-glow);
+  box-shadow: 0 6px 20px var(--accent-glow);
   transition: transform var(--t-fast), filter var(--t-fast), box-shadow var(--t-fast);
 }
-.btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px);
+  box-shadow: 0 8px 26px var(--accent-glow); }
+.btn-primary:active { transform: translateY(0) scale(0.97); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
+/* Bigger, bolder secondary buttons with a soft tinted fill. */
 .btn-ghost {
-  padding: 8px 14px; border-radius: var(--r-sm); background: var(--surface-2);
-  border: 1px solid var(--border); color: var(--text-2); cursor: pointer;
-  font-size: 13px; transition: all var(--t-fast);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 16px; min-height: 42px; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--border-strong);
+  color: var(--text); cursor: pointer; font-size: 13.5px; font-weight: 600;
+  transition: all var(--t-fast);
 }
-.btn-ghost:hover { border-color: var(--accent-line); color: var(--text); }
+.btn-ghost:hover { transform: translateY(-1px); }
+.btn-ghost:active { transform: scale(0.96); }
+/* Colour-code the main result actions. */
+#view-graph-btn { color: var(--accent); border-color: var(--accent-line);
+  background: var(--accent-soft); }
+#view-graph-btn:hover { box-shadow: 0 4px 14px var(--accent-glow); }
+#report-btn { color: var(--good); border-color: rgba(90,214,160,0.35);
+  background: var(--good-soft); }
+#report-btn:hover { box-shadow: 0 4px 14px rgba(90,214,160,0.25); }
+#new-search-btn { color: var(--info); border-color: rgba(127,182,240,0.35);
+  background: var(--info-soft); }
+#graph-back { color: var(--text); }
 
 /* upload + scope gate */
 .upload-row { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); }
