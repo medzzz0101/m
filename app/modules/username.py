@@ -29,7 +29,7 @@ from __future__ import annotations
 import asyncio
 
 from app.core.base import (
-    BaseModule, Category, Confidence, GraphNode, InputType, RunContext,
+    BaseModule, Category, Confidence, GraphEdge, GraphNode, InputType, RunContext,
 )
 from ._common import host_of
 
@@ -183,15 +183,23 @@ class UsernameModule(BaseModule):
                 "confidence": "low",
             })
 
-        # Graph: the username node + a 'taken on' marker per reliable hit.
-        nodes = [GraphNode("username", username)]
-        for c in hits:
-            nodes.append(GraphNode("service", c["site"], label=c["site"]))
+        # Graph: the username node linked to every platform it's present on, so a
+        # username run renders as a hub-and-spoke "where does this handle exist"
+        # map. (Presence links only — NOT a claim they're the same person.)
+        nodes = [GraphNode("username", username, label=f"@{username}")]
+        edges: list[GraphEdge] = []
+        for c in hits + weak:
+            svc = f"{c['site']}:{username}"
+            nodes.append(GraphNode("service", svc, label=c["site"],
+                                   props={"url": c["url"],
+                                          "confidence": "low" if c["unreliable"] else "medium"}))
+            edges.append(GraphEdge(f"username:{username}", f"service:{svc}",
+                                   "related_to", props={"kind": "presence"}))
 
         return self.result(
             findings=findings,
             # Presence is inherently low-confidence as an *identity* signal.
             confidence=Confidence.LOW if hits else Confidence.INFO,
             raw={"checks": checks},
-            nodes=nodes,
+            nodes=nodes, edges=edges,
         )
