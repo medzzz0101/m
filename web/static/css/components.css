@@ -335,6 +335,10 @@ body.has-results .landing-only { display: none !important; }
 .finding-map { height: 180px; border-radius: var(--r-sm); margin-top: var(--s2);
   overflow: hidden; border: 1px solid var(--border); }
 
+/* inline image inside a card (ELA / screenshot) */
+.finding-img { width: 100%; margin-top: var(--s2); border-radius: var(--r-sm);
+  border: 1px solid var(--border); display: block; background: #000; }
+
 /* empty state */
 .empty-state { text-align: center; padding: var(--s8) var(--s4); color: var(--text-3); }
 .empty-mark { font-size: 46px; color: var(--surface-3); margin-bottom: var(--s3); }

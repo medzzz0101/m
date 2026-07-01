@@ -418,6 +418,12 @@ function renderFinding(f) {
   }
   if (f.note) row.append(el("div", { class: "finding-note" }, f.note));
 
+  // inline image (ELA visualisation, screenshots…)
+  if (f.image) {
+    row.append(el("img", { class: "finding-img", src: f.image, loading: "lazy",
+      alt: f.label || "image" }));
+  }
+
   // inline map (EXIF GPS etc.)
   if (f.map && typeof f.map.lat === "number") {
     const mapEl = el("div", { class: "finding-map" });
