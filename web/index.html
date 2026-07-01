@@ -74,15 +74,56 @@
 
           <!-- ----- HERO (landing) ----- -->
           <div class="hero landing-only" id="hero">
+            <!-- Original hand-drawn SVG: an intel "radar" — concentric rings,
+                 crosshair, a rotating sweep, and pulsing target blips linked by
+                 correlation lines. Purely decorative, all CSS-animated. -->
+            <div class="hero-visual" aria-hidden="true">
+              <svg viewBox="0 0 240 240" class="radar">
+                <defs>
+                  <radialGradient id="sweepG" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.55"/>
+                    <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                  </radialGradient>
+                  <filter id="glow"><feGaussianBlur stdDeviation="2.2" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+                </defs>
+                <g class="radar-rings" stroke="var(--border-strong)" fill="none">
+                  <circle cx="120" cy="120" r="34"/><circle cx="120" cy="120" r="66"/>
+                  <circle cx="120" cy="120" r="98"/>
+                  <line x1="120" y1="18" x2="120" y2="222"/>
+                  <line x1="18" y1="120" x2="222" y2="120"/>
+                </g>
+                <!-- correlation links between blips -->
+                <g class="radar-links" stroke="var(--accent-line)" fill="none">
+                  <line x1="120" y1="120" x2="176" y2="78"/>
+                  <line x1="120" y1="120" x2="70" y2="150"/>
+                  <line x1="176" y1="78" x2="150" y2="176"/>
+                  <line x1="70" y1="150" x2="150" y2="176"/>
+                </g>
+                <!-- rotating sweep -->
+                <g class="radar-sweep">
+                  <path d="M120 120 L120 20 A100 100 0 0 1 210 90 Z" fill="url(#sweepG)"/>
+                  <line x1="120" y1="120" x2="120" y2="20" stroke="var(--accent)" stroke-width="1.5"/>
+                </g>
+                <!-- target blips -->
+                <g filter="url(#glow)">
+                  <circle class="blip b1" cx="176" cy="78"  r="4" fill="var(--n-domain)"/>
+                  <circle class="blip b2" cx="70"  cy="150" r="4" fill="var(--n-ip)"/>
+                  <circle class="blip b3" cx="150" cy="176" r="4" fill="var(--cat-blockchain)"/>
+                  <circle class="blip b4" cx="120" cy="120" r="5" fill="#fff"/>
+                  <circle class="blip b5" cx="196" cy="150" r="3" fill="var(--cat-identity)"/>
+                </g>
+              </svg>
+            </div>
             <div class="hero-badge">
               <span class="hero-badge-dot"></span>
               PUBLIC-DATA · INFRASTRUCTURE · ON-CHAIN · IMAGE FORENSICS
             </div>
-            <h1 class="hero-title">See the whole picture.</h1>
+            <h1 class="hero-title">Correlate<br>everything public.</h1>
             <p class="hero-sub">
-              One input, every compatible module, a single correlation graph.
-              Infrastructure, blockchain, and image-geolocation OSINT — all
-              public-data, all in one console.
+              One input, every compatible module, a single living correlation
+              graph. Infrastructure · blockchain · image-geolocation · social
+              presence — an intelligence console.
             </p>
           </div>
 

@@ -19,10 +19,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  /* Subtle radial vignette so the near-black bg has depth. */
+  /* Layered backdrop: a faint crosshair-tick grid (drawn as an inline SVG) over
+     a coloured gradient mesh — the "intelligence console" texture. */
   background-image:
-    radial-gradient(1200px 600px at 80% -10%, rgba(139,124,255,0.06), transparent),
-    radial-gradient(900px 500px at -10% 110%, rgba(127,182,240,0.04), transparent);
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><g stroke='rgba(139,124,255,0.06)' stroke-width='1'><path d='M24 20v8M20 24h8'/></g></svg>"),
+    radial-gradient(1200px 600px at 80% -10%, rgba(139,124,255,0.10), transparent),
+    radial-gradient(900px 520px at -10% 110%, rgba(90,214,160,0.06), transparent),
+    radial-gradient(700px 500px at 50% 40%, rgba(127,182,240,0.05), transparent);
   background-attachment: fixed;
 }
 .mono { font-family: var(--font-mono); }
