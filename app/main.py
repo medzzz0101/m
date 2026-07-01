@@ -80,7 +80,7 @@ TIER_MAP = {
     # Premium — solid recon + first identity/blockchain/image depth.
     "premium": ["subdomains", "asn", "security_headers", "tls_certs",
                 "http_methods", "telegram", "image_meta", "btc_explorer",
-                "email_exposure", "google_dorks"],
+                "email_exposure", "google_dorks", "cidr_calc", "decoder"],
     # Elite — full fingerprinting + more social + more forensics.
     "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
               "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
@@ -88,7 +88,8 @@ TIER_MAP = {
     # Mega — passive exposure, CVEs, scoring, deep social.
     "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
              "subdomain_brute", "threat_feeds", "tiktok", "discord",
-             "telegram_channel", "github_user", "steam", "greynoise"],
+             "telegram_channel", "github_user", "steam", "greynoise",
+             "jwt_decoder", "email_headers"],
     # Ultra — heavy attack-surface + advanced blockchain/forensics.
     "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
               "web_screenshot", "typosquat", "image_ela", "btc_trace",
@@ -137,6 +138,55 @@ async def detect_type(value: str):
         "label": TYPE_LABELS.get(itype, itype.value),
         "compatible_modules": compatible,
     }
+
+
+# --- Checkout / payments ----------------------------------------------------
+# Illustrative monthly prices (EUR) per plan.
+PLAN_PRICES = {"base": 0, "premium": 9, "elite": 19, "mega": 39,
+               "ultra": 79, "master": 149}
+
+
+@app.post("/api/checkout")
+async def checkout(payload: dict):
+    """Start a subscription checkout for a plan.
+
+    * Free plan -> nothing to pay.
+    * If STRIPE_SECRET_KEY is set in .env -> create a real Stripe Checkout
+      Session (card data is handled ENTIRELY by Stripe's hosted page; it never
+      touches this server) and return its URL to redirect to.
+    * Otherwise -> return {demo: true} so the UI runs a safe simulated checkout.
+    """
+    plan = (payload.get("plan") or "").lower()
+    price = PLAN_PRICES.get(plan)
+    if price is None:
+        raise HTTPException(400, "Unknown plan.")
+    if price == 0:
+        return {"free": True, "plan": plan}
+
+    key = CONFIG.get("STRIPE_SECRET_KEY", "").strip()
+    if not key:
+        return {"demo": True, "plan": plan, "price": price}
+
+    origin = (payload.get("origin") or "").rstrip("/")
+    data = {
+        "mode": "subscription",
+        "success_url": f"{origin}/?checkout=success&plan={plan}",
+        "cancel_url": f"{origin}/?checkout=cancel",
+        "line_items[0][quantity]": "1",
+        "line_items[0][price_data][currency]": "eur",
+        "line_items[0][price_data][unit_amount]": str(price * 100),
+        "line_items[0][price_data][recurring][interval]": "month",
+        "line_items[0][price_data][product_data][name]": f"OSINT Engine — {plan} plan",
+    }
+    try:
+        resp = await HTTP.post("https://api.stripe.com/v1/checkout/sessions",
+                               data=data, auth=(key, ""))
+        j = resp.json()
+        if resp.status_code >= 400:
+            return {"error": j.get("error", {}).get("message", "Stripe error")}
+        return {"url": j.get("url"), "id": j.get("id")}
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"checkout failed: {exc}"}
 
 
 @app.post("/api/run")

@@ -605,6 +605,26 @@ body.has-results .landing-only { display: none !important; }
 .price-feats .price-more::before { content: "＋"; }
 .price-btn { width: 100%; justify-content: center; }
 
+/* ---------------- Checkout (demo) ---------------- */
+.co-panel { padding: var(--s5); }
+.co-body { margin-top: var(--s3); }
+.co-plan { display: flex; align-items: center; gap: 10px; margin-bottom: var(--s3); }
+.co-plan-name { font-size: 16px; font-weight: 700; color: #fff; }
+.co-plan-sub { font-size: 12px; color: var(--text-3); }
+.co-amount { font-size: 30px; font-weight: 800; color: #fff; margin-bottom: var(--s3); }
+.co-demo-note { font-size: 12px; color: var(--text-2); line-height: 1.5;
+  background: var(--warn-soft); border: 1px solid rgba(232,196,104,0.3);
+  border-radius: var(--r-md); padding: var(--s3); margin-bottom: var(--s4); }
+.co-pay { width: 100%; min-height: 48px; }
+.co-success { text-align: center; padding: var(--s5) 0; }
+.co-check { width: 64px; height: 64px; margin: 0 auto var(--s3); border-radius: 50%;
+  background: var(--good-soft); color: var(--good); display: grid; place-items: center;
+  font-size: 32px; border: 2px solid var(--good); box-shadow: 0 0 30px rgba(90,214,160,0.4);
+  animation: pop var(--t-med); }
+.co-success-title { font-size: 18px; font-weight: 700; color: #fff; }
+.co-success-sub { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+@keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 /* ---------------- Toasts ---------------- */
 .toast-host { position: fixed; bottom: calc(var(--s5) + env(safe-area-inset-bottom));
   left: 50%; transform: translateX(-50%); z-index: 90; display: flex;

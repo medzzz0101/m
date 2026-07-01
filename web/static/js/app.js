@@ -58,6 +58,7 @@ init();
 async function init() {
   await loadModules();
   bindUI();
+  handleCheckoutReturn();
   registerSW();
   pingHealth();
 }
@@ -201,6 +202,66 @@ const TIER_TAGLINE = {
 function openPricing() { closeSidebar(); renderPricing(); $("#pricing").hidden = false; }
 function closePricing() { $("#pricing").hidden = true; }
 
+// Start a subscription checkout for a plan. Free = instant; a configured Stripe
+// key redirects to Stripe's hosted checkout; otherwise a safe demo checkout.
+async function startCheckout(t) {
+  const price = TIER_PRICE[t] ?? 0;
+  if (price === 0) { setPlan(t); closePricing(); toast(`Switched to ${TIER_META[t]?.name} ✓`); return; }
+  try {
+    const r = await api("/api/checkout", {
+      method: "POST",
+      body: JSON.stringify({ plan: t, origin: location.origin }),
+    });
+    if (r.url) { window.location.href = r.url; return; }   // real Stripe
+    if (r.error) { toast("Checkout error: " + r.error); return; }
+    demoCheckout(t);                                        // demo fallback
+  } catch (e) { toast("Checkout failed: " + e.message); }
+}
+
+// Safe simulated checkout (no card data collected, no real charge).
+function demoCheckout(t) {
+  const tm = TIER_META[t] || {};
+  const price = TIER_PRICE[t] ?? 0;
+  const body = $("#co-body");
+  $("#pricing").hidden = true;
+  $("#checkout").hidden = false;
+  body.innerHTML = "";
+  body.append(
+    el("div", { class: "co-plan" },
+      el("span", { class: "plan-dot", style: `--pc:${tm.color}` }),
+      el("div", {}, el("div", { class: "co-plan-name" }, `${tm.name} plan`),
+        el("div", { class: "co-plan-sub" }, tm.blurb || ""))),
+    el("div", { class: "co-amount" }, `€${price}`, el("span", { class: "price-per" }, "/mo")),
+    el("div", { class: "co-demo-note" },
+      "🔒 Demo checkout — no real payment is taken and no card data is collected. " +
+      "Add a Stripe key in .env to enable live payments (card data is handled only " +
+      "by Stripe, never by this app)."),
+    el("button", { class: "btn-primary co-pay", id: "co-pay" },
+      `Complete purchase (demo)`));
+  $("#co-pay").addEventListener("click", () => {
+    const btn = $("#co-pay");
+    btn.disabled = true; btn.textContent = "Processing…";
+    setTimeout(() => {
+      body.innerHTML = `<div class="co-success">
+        <div class="co-check">✓</div>
+        <div class="co-success-title">${esc(tm.name)} plan activated</div>
+        <div class="co-success-sub">Demo payment complete. Modules unlocked.</div></div>`;
+      setPlan(t);
+      setTimeout(() => { $("#checkout").hidden = true; }, 1400);
+    }, 1500);
+  });
+}
+
+// If we returned from a (real) Stripe checkout, apply the plan.
+function handleCheckoutReturn() {
+  const q = new URLSearchParams(location.search);
+  if (q.get("checkout") === "success" && q.get("plan")) {
+    setPlan(q.get("plan"));
+    toast(`✓ ${TIER_META[q.get("plan")]?.name || "Plan"} activated`);
+  }
+  if (q.get("checkout")) history.replaceState({}, "", location.pathname);
+}
+
 function renderPricing() {
   const grid = $("#pricing-grid");
   grid.innerHTML = "";
@@ -235,8 +296,7 @@ function renderPricing() {
       el("button", {
         class: isCurrent ? "btn-ghost price-btn" : "btn-primary price-btn",
         disabled: isCurrent || undefined,
-        onclick: () => { setPlan(t); closePricing();
-          toast(`Switched to ${tm.name} ✓`); },
+        onclick: () => startCheckout(t),
       }, isCurrent ? "Current plan" : (price === 0 ? "Select" : `Choose ${tm.name}`)));
     grid.append(card);
   }
@@ -466,6 +526,8 @@ function bindUI() {
   $("#node-pop-close").addEventListener("click", () => ($("#node-pop").hidden = true));
   $("#pricing-close").addEventListener("click", closePricing);
   $("#pricing").addEventListener("click", (e) => { if (e.target.id === "pricing") closePricing(); });
+  $("#co-close").addEventListener("click", () => ($("#checkout").hidden = true));
+  $("#checkout").addEventListener("click", (e) => { if (e.target.id === "checkout") $("#checkout").hidden = true; });
 
   // Report export menu.
   $("#report-btn").addEventListener("click", (e) => {
