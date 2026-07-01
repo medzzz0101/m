@@ -176,6 +176,10 @@ class BaseModule(ABC):
     def accepts_type(self, itype: InputType) -> bool:
         return itype in self.accepts
 
+    # Subscription tier this module belongs to (set post-discovery from a central
+    # map in app.main). Higher tiers = more/deeper capabilities.
+    tier: str = "base"
+
     def manifest(self) -> dict[str, Any]:
         """Metadata blob the frontend uses to render the sidebar/registry."""
         return {
@@ -187,4 +191,5 @@ class BaseModule(ABC):
             "accepts": [t.value for t in self.accepts],
             "needs_network": self.needs_network,
             "requires_authorized_target": self.requires_authorized_target,
+            "tier": getattr(self, "tier", "base"),
         }

@@ -17,7 +17,23 @@ const state = {
   lastRun: null,        // last /api/run payload (for graph view)
   graph: null,          // GraphView instance
   cmdkIndex: 0,
+  tiers: [],            // tier order from backend
+  plan: localStorage.getItem("plan") || "base",
 };
+
+// Subscription tiers — display metadata (name, accent colour, "power" level).
+const TIER_META = {
+  base:    { name: "Base",    color: "#7fb6f0", power: 1, blurb: "Everyday essentials" },
+  premium: { name: "Premium", color: "#8b7cff", power: 2, blurb: "Solid recon depth" },
+  elite:   { name: "Elite",   color: "#5ad6a0", power: 3, blurb: "Full fingerprinting" },
+  mega:    { name: "Mega",    color: "#e8c468", power: 4, blurb: "Exposure + deep social" },
+  ultra:   { name: "Ultra",   color: "#e892d0", power: 5, blurb: "Heavy attack-surface" },
+  master:  { name: "Master",  color: "#f7c948", power: 6, blurb: "Everything, incl. active" },
+};
+const tierIdx = (t) => Math.max(0, state.tiers.indexOf(t));
+const planIdx = () => tierIdx(state.plan);
+const isUnlocked = (m) => tierIdx(m.tier || "base") <= planIdx();
+const allowedKeys = () => new Set(state.modules.filter(isUnlocked).map((m) => m.key));
 
 const CATS = [
   ["infrastructure", "Infrastructure"],
@@ -44,9 +60,13 @@ async function loadModules() {
   try {
     const data = await api("/api/modules");
     state.modules = data.modules;
+    state.tiers = data.tiers || ["base", "premium", "elite", "mega", "ultra", "master"];
+    if (!state.tiers.includes(state.plan)) state.plan = state.tiers[0];
     state.byCat = {};
     for (const m of state.modules)
       (state.byCat[m.category] ||= []).push(m);
+    applyPlanColor();
+    renderPlanBox();
     renderSidebar();
     renderTabbar();
     renderStats();
@@ -56,17 +76,74 @@ async function loadModules() {
   }
 }
 
+// --- Subscription plan UI ---------------------------------------------------
+function applyPlanColor() {
+  const meta = TIER_META[state.plan] || {};
+  const root = document.documentElement;
+  root.style.setProperty("--tier", meta.color || "var(--accent)");
+  root.style.setProperty("--tier-soft",
+    `color-mix(in srgb, ${meta.color} 14%, transparent)`);
+  root.style.setProperty("--tier-line",
+    `color-mix(in srgb, ${meta.color} 40%, transparent)`);
+}
+
+function renderPlanBox() {
+  const box = $("#plan-box");
+  if (!box) return;
+  const meta = TIER_META[state.plan] || {};
+  const unlocked = state.modules.filter(isUnlocked).length;
+  box.innerHTML = "";
+  box.append(el("div", { class: "plan-label" }, "Subscription"));
+  const current = el("div", { class: "plan-current", id: "plan-current" },
+    el("span", { class: "plan-dot", style: `--pc:${meta.color}` }),
+    `${meta.name} plan`,
+    el("span", { class: "plan-power" }, "⚡".repeat(meta.power || 1)));
+  box.append(current);
+
+  // The expandable list of plans.
+  const list = el("div", { class: "plan-list", id: "plan-list", hidden: true });
+  for (const t of state.tiers) {
+    const tm = TIER_META[t] || { name: t, color: "#888", power: 1 };
+    const count = state.modules.filter((m) => (m.tier || "base") === t).length;
+    const cumulative = state.modules.filter(
+      (m) => tierIdx(m.tier || "base") <= tierIdx(t)).length;
+    const opt = el("div", {
+      class: "plan-opt" + (t === state.plan ? " active" : ""),
+      style: `--pc:${tm.color}`, onclick: () => setPlan(t),
+    },
+      el("span", { class: "plan-dot", style: `--pc:${tm.color}` }),
+      el("div", {}, el("div", {}, `${tm.name}  ${"⚡".repeat(tm.power)}`),
+        el("div", { style: "font-size:10px;color:var(--text-3)" }, tm.blurb)),
+      el("span", { class: "plan-count" }, `${cumulative} mods`));
+    list.append(opt);
+  }
+  box.append(list);
+  current.addEventListener("click", () => { list.hidden = !list.hidden; });
+  const cnt = $("#plan-label-count");
+  if (cnt) cnt.textContent = unlocked;
+}
+
+function setPlan(t) {
+  state.plan = t;
+  localStorage.setItem("plan", t);
+  applyPlanColor();
+  renderPlanBox();
+  renderStats();
+  renderDeck();
+  toast(`${TIER_META[t]?.name || t} plan — ${state.modules.filter(isUnlocked).length} modules unlocked`);
+}
+
 // Small dashboard of headline numbers on the landing.
 function renderStats() {
   const strip = $("#stat-strip");
   if (!strip) return;
   const cats = Object.keys(state.byCat).length;
-  const sources = new Set(state.modules.map((m) => m.name)).size;
+  const unlocked = state.modules.filter(isUnlocked).length;
   strip.innerHTML = "";
   const items = [
-    [String(state.modules.length), "Modules"],
+    [`${unlocked}`, "Unlocked"],
+    [String(state.modules.length), "Total modules"],
     [String(cats), "Domains"],
-    [String(sources), "Data sources"],
     ["100%", "Public data"],
   ];
   for (const [num, label] of items) {
@@ -113,9 +190,12 @@ function deckCard(m) {
     ...m.accepts.map((a) => el("span", {
       class: "type-tag" + (m.requires_authorized_target ? " gated" : ""),
     }, a)));
+  const unlocked = isUnlocked(m);
+  const tm = TIER_META[m.tier || "base"] || {};
   const card = el("div", {
-    class: "deck-card", title: m.description, "data-cat": m.category,
-    onclick: () => pickModule(m),
+    class: "deck-card" + (unlocked ? "" : " locked"),
+    title: m.description, "data-cat": m.category,
+    onclick: () => unlocked ? pickModule(m) : showUpgrade(m),
     onmousemove: (e) => {
       const r = card.getBoundingClientRect();
       card.style.setProperty("--mx", `${e.clientX - r.left}px`);
@@ -126,7 +206,20 @@ function deckCard(m) {
       el("div", { class: "deck-name" }, m.name),
       el("div", { class: "deck-sub" }, m.subtitle || m.description.slice(0, 70)),
       accepts));
+  // Lock badge for modules above the current plan.
+  if (!unlocked)
+    card.append(el("div", { class: "deck-lock", style: `--tier-mark:${tm.color}` },
+      "🔒 " + (tm.name || m.tier)));
   return card;
+}
+
+// Prompt to upgrade when a locked module is tapped.
+function showUpgrade(m) {
+  const tm = TIER_META[m.tier] || {};
+  toast(`🔒 "${m.name}" needs the ${tm.name} plan`);
+  const box = $("#plan-box");
+  if (box) { box.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("#plan-list") && ($("#plan-list").hidden = false); }
 }
 
 // One canonical example value per input type, so tapping a card is instant.
@@ -245,6 +338,8 @@ function bindUI() {
   });
 
   $("#menu-btn")?.addEventListener("click", toggleSidebar);
+  $("#sidebar-close")?.addEventListener("click", closeSidebar);
+  $("#sidebar-backdrop")?.addEventListener("click", closeSidebar);
   $("#cmdk-trigger").addEventListener("click", openCmdk);
   $("#view-graph-btn").addEventListener("click", openGraph);
   $("#graph-back").addEventListener("click", () => showView("workspace"));
@@ -334,20 +429,39 @@ async function runTarget() {
       return;
     }
 
-    // Detect type, learn which modules will run, lay down skeletons.
+    // Detect type, then split compatible modules into unlocked vs locked (plan).
     const det = await api(`/api/detect?value=${encodeURIComponent(value)}`);
+    const unlocked = allowedKeys();
+    const runnable = det.compatible_modules.filter((k) => unlocked.has(k));
+    const locked = det.compatible_modules.filter((k) => !unlocked.has(k));
     $("#results-summary").textContent =
-      `${det.label} · ${det.compatible_modules.length} module(s)`;
+      `${det.label} · ${runnable.length} module(s)` +
+      (locked.length ? ` · ${locked.length} locked` : "");
+
+    // Upgrade hint when this input has modules above the current plan.
+    if (locked.length) {
+      const nextTier = state.modules
+        .filter((m) => locked.includes(m.key))
+        .map((m) => m.tier)
+        .sort((a, b) => tierIdx(a) - tierIdx(b))[0];
+      grid.append(el("div", { class: "upgrade-note" },
+        el("span", {}, "🔒"),
+        el("span", {}, `${locked.length} more module(s) for this input are locked. `),
+        el("button", { class: "btn-ghost", style: "margin-left:auto",
+          onclick: () => setPlan(nextTier) },
+          `Unlock with ${TIER_META[nextTier]?.name || nextTier}`)));
+    }
+
     const skeletons = {};
-    det.compatible_modules.forEach((k) => {
+    runnable.forEach((k) => {
       const m = state.modules.find((x) => x.key === k);
       skeletons[k] = addSkeleton(grid, m?.name || k);
     });
 
-    // Run everything server-side (concurrent) and swap skeletons for cards.
+    // Run only the unlocked modules for this plan.
     const out = await api("/api/run", {
       method: "POST",
-      body: JSON.stringify({ value, authorized }),
+      body: JSON.stringify({ value, authorized, only: runnable }),
     });
     state.lastRun = out;
 
@@ -845,8 +959,14 @@ function progress(on) {
   else { bar.style.width = "100%"; setTimeout(() => {
     bar.classList.remove("active"); bar.style.width = "0"; }, 250); }
 }
-function toggleSidebar() { $("#sidebar").classList.toggle("open"); }
-function closeSidebar() { $("#sidebar").classList.remove("open"); }
+function toggleSidebar() {
+  const open = $("#sidebar").classList.toggle("open");
+  $("#sidebar-backdrop").hidden = !open;
+}
+function closeSidebar() {
+  $("#sidebar").classList.remove("open");
+  $("#sidebar-backdrop").hidden = true;
+}
 
 // Return to the landing (hero + deck + stats), clearing the last run.
 function resetToLanding() {

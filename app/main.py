@@ -68,6 +68,38 @@ CACHE = DiskCache(CACHE_DIR, default_ttl=3600)
 RATE = HostRateLimiter(per_host=4)
 REGISTRY = Registry().discover("app.modules")
 
+# --- Subscription tiers -----------------------------------------------------
+# A product-style tiering: each plan unlocks progressively more (and more
+# powerful) modules. Ordered from lowest to highest. Any module not listed
+# defaults to "elite". This is organisational gating, not a security boundary.
+TIER_ORDER = ["base", "premium", "elite", "mega", "ultra", "master"]
+TIER_MAP = {
+    # Base — the everyday essentials.
+    "base": ["dns_full", "whois", "ip_geo", "http_probe", "username",
+             "wayback", "geo_checklist", "exif_gps"],
+    # Premium — solid recon + first identity/blockchain/image depth.
+    "premium": ["subdomains", "asn", "security_headers", "tls_certs",
+                "http_methods", "telegram", "image_meta", "btc_explorer",
+                "email_exposure", "google_dorks"],
+    # Elite — full fingerprinting + more social + more forensics.
+    "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
+              "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
+              "image_phash", "sun_calc"],
+    # Mega — passive exposure, CVEs, scoring, deep social.
+    "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
+             "subdomain_brute", "threat_feeds", "tiktok", "discord",
+             "telegram_channel", "github_user", "steam"],
+    # Ultra — heavy attack-surface + advanced blockchain/forensics.
+    "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
+              "web_screenshot", "typosquat", "image_ela", "btc_trace",
+              "urlscan", "file_forensics"],
+    # Master — everything, including the one ACTIVE module.
+    "master": ["port_services"],
+}
+_KEY_TO_TIER = {k: tier for tier, keys in TIER_MAP.items() for k in keys}
+for _m in REGISTRY.all():
+    _m.tier = _KEY_TO_TIER.get(_m.key, "elite")
+
 
 def _ctx_factory() -> RunContext:
     """Fresh RunContext per run, sharing the long-lived services."""
@@ -91,7 +123,7 @@ async def health():
 @app.get("/api/modules")
 async def modules():
     """The module catalog — powers the sidebar/registry in the UI."""
-    return {"modules": REGISTRY.manifest()}
+    return {"modules": REGISTRY.manifest(), "tiers": TIER_ORDER}
 
 
 @app.get("/api/detect")

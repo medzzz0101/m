@@ -73,6 +73,13 @@ body::after {
   background: var(--accent-soft); color: var(--accent);
   border: 1px solid var(--accent-line);
 }
+.sidebar-close { margin-left: auto; width: 34px; height: 34px; border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  font-size: 15px; cursor: pointer; }
+.sidebar-backdrop {
+  position: fixed; inset: 0; z-index: 55; background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px); animation: viewIn var(--t-fast);
+}
 .brand-title { font-weight: 700; letter-spacing: 0.14em; font-size: 13px; }
 .brand-sub { color: var(--text-3); font-size: 11px; letter-spacing: 0.18em;
              text-transform: uppercase; }

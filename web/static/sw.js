@@ -14,7 +14,7 @@
 
 // Bump this whenever shell assets change — it invalidates old caches so phones
 // pick up the new UI instead of a stale one.
-const CACHE_VERSION = "osint-shell-v13";
+const CACHE_VERSION = "osint-shell-v14";
 const SHELL = [
   "/",
   "/static/css/tokens.css",

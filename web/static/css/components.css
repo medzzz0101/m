@@ -4,6 +4,49 @@
    pills, copy buttons, JSON drawer, command palette, toasts, map, graph.
    ========================================================================== */
 
+/* ---------------- Subscription plan selector ---------------- */
+.plan-box { padding: var(--s3) var(--s4) var(--s2); }
+.plan-label { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: var(--s2); }
+.plan-current {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+  border-radius: var(--r-md); cursor: pointer; font-weight: 700; font-size: 13px;
+  background: var(--tier-soft, var(--accent-soft)); color: var(--tier, var(--accent));
+  border: 1px solid var(--tier-line, var(--accent-line));
+}
+.plan-current .plan-power { margin-left: auto; font-size: 10px; opacity: 0.8;
+  font-family: var(--font-mono); }
+.plan-list { margin-top: var(--s2); display: flex; flex-direction: column; gap: 4px; }
+.plan-opt {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: var(--r-sm); cursor: pointer; font-size: 12.5px; color: var(--text-2);
+  border: 1px solid transparent; transition: all var(--t-fast);
+}
+.plan-opt:hover { background: var(--surface-2); color: var(--text); }
+.plan-opt.active { border-color: var(--pc); color: #fff; background:
+  color-mix(in srgb, var(--pc) 16%, transparent); }
+.plan-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--pc);
+  box-shadow: 0 0 8px var(--pc); }
+.plan-opt .plan-count { margin-left: auto; font-size: 10px; color: var(--text-3);
+  font-family: var(--font-mono); }
+
+/* Locked deck cards (module above current plan). */
+.deck-card.locked { opacity: 0.55; }
+.deck-card.locked:hover { transform: none; }
+.deck-lock {
+  position: absolute; top: 8px; right: 8px; font-size: 9px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 7px;
+  border-radius: var(--r-pill); background: var(--surface-3); color: var(--tier-mark, var(--warn));
+  border: 1px solid var(--border-strong); display: flex; align-items: center; gap: 3px;
+}
+
+/* Upgrade banner shown when trying to use a locked module. */
+.upgrade-note {
+  margin: var(--s3) 0; padding: var(--s3) var(--s4); border-radius: var(--r-md);
+  background: var(--tier-soft, var(--accent-soft)); border: 1px solid var(--tier-line, var(--accent-line));
+  color: var(--text); font-size: 13px; display: flex; align-items: center; gap: 10px;
+}
+
 /* ---------------- Animated hero backdrop ---------------- */
 /* A soft, slowly-drifting gradient mesh behind the hero for a premium feel.
    Pure CSS, GPU-friendly, and disabled under prefers-reduced-motion. */

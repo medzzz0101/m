@@ -28,6 +28,9 @@
   <!-- ===================== SUITE SHELL ===================== -->
   <div class="shell">
 
+    <!-- Backdrop: tap to close the mobile sidebar -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
+
     <!-- ---------- Left sidebar (desktop) / hidden on mobile ---------- -->
     <aside class="sidebar" id="sidebar">
       <div class="brand">
@@ -36,7 +39,11 @@
           <div class="brand-title">CORRELATE</div>
           <div class="brand-sub">osint engine</div>
         </div>
+        <button class="sidebar-close only-mobile" id="sidebar-close" aria-label="Close">✕</button>
       </div>
+
+      <!-- Subscription plan selector -->
+      <div class="plan-box" id="plan-box"></div>
 
       <!-- Module catalog, grouped by category. Populated by app.js -->
       <nav class="module-nav" id="module-nav" aria-label="Modules"></nav>
