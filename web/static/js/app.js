@@ -30,6 +30,50 @@ const TIER_META = {
   ultra:   { name: "Ultra",   color: "#e892d0", power: 5, blurb: "Heavy attack-surface" },
   master:  { name: "Master",  color: "#f7c948", power: 6, blurb: "Everything, incl. active" },
 };
+// Colour themes — each re-skins the whole app's accent family. Original palettes.
+const THEMES = {
+  violet:  { name: "Console",  accent: "#8b7cff", rgb: "139,124,255" },
+  green:   { name: "Terminal", accent: "#3ddc84", rgb: "61,220,132" },
+  cyan:    { name: "Cyber",    accent: "#22d3ee", rgb: "34,211,238" },
+  amber:   { name: "Ops",      accent: "#f5a623", rgb: "245,166,35" },
+  crimson: { name: "Red team", accent: "#ff5c72", rgb: "255,92,114" },
+  magenta: { name: "Neon",     accent: "#e879f9", rgb: "232,121,249" },
+};
+state.theme = localStorage.getItem("theme") || "violet";
+
+function applyTheme(t) {
+  const th = THEMES[t] || THEMES.violet;
+  state.theme = t;
+  localStorage.setItem("theme", t);
+  const r = document.documentElement.style;
+  r.setProperty("--accent", th.accent);
+  r.setProperty("--accent-soft", `rgba(${th.rgb},0.14)`);
+  r.setProperty("--accent-line", `rgba(${th.rgb},0.40)`);
+  r.setProperty("--accent-glow", `rgba(${th.rgb},0.30)`);
+  r.setProperty("--n-domain", th.accent);
+}
+
+function renderThemeBox() {
+  const box = $("#theme-box");
+  if (!box) return;
+  box.innerHTML = "";
+  box.append(el("div", { class: "plan-label" }, "Theme"));
+  const row = el("div", { class: "theme-row" });
+  for (const [key, th] of Object.entries(THEMES)) {
+    row.append(el("button", {
+      class: "theme-dot" + (key === state.theme ? " active" : ""),
+      title: th.name, style: `--tc:${th.accent}`,
+      onclick: () => {
+        applyTheme(key);
+        $$("#theme-box .theme-dot").forEach((d) => d.classList.remove("active"));
+        row.children[Object.keys(THEMES).indexOf(key)].classList.add("active");
+        toast(`${th.name} theme`);
+      },
+    }));
+  }
+  box.append(row);
+}
+
 // Deep Scan: after a run, auto-pivot the top nodes. How many expansions is
 // gated by the plan (more power on higher tiers).
 state.deep = localStorage.getItem("deep") === "1";
@@ -72,8 +116,10 @@ async function loadModules() {
     state.byCat = {};
     for (const m of state.modules)
       (state.byCat[m.category] ||= []).push(m);
+    applyTheme(state.theme);
     applyPlanColor();
     renderPlanBox();
+    renderThemeBox();
     renderSidebar();
     renderTabbar();
     renderStats();

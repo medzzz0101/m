@@ -86,12 +86,13 @@ TIER_MAP = {
     "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
               "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
               "image_phash", "sun_calc", "phone_info", "hsts_preload", "mac_lookup",
-              "ens_resolve", "dns_hostsearch"],
+              "ens_resolve", "dns_hostsearch", "caa_check"],
     # Mega — passive exposure, CVEs, scoring, deep social.
     "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
              "subdomain_brute", "threat_feeds", "tiktok", "discord",
              "telegram_channel", "github_user", "steam", "greynoise",
-             "jwt_decoder", "email_headers", "tor_exit", "keybase"],
+             "jwt_decoder", "email_headers", "tor_exit", "keybase",
+             "bluesky", "mastodon", "spamhaus_drop"],
     # Ultra — heavy attack-surface + advanced blockchain/forensics.
     "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
               "web_screenshot", "typosquat", "image_ela", "btc_trace",
