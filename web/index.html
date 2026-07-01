@@ -148,6 +148,17 @@
               <button class="btn-ghost" id="new-search-btn">＋ New</button>
             </div>
           </div>
+          <!-- Filter/search toolbar (appears with results) -->
+          <div class="results-toolbar" id="results-toolbar" hidden>
+            <div class="rt-filters" id="rt-filters"></div>
+            <div class="rt-right">
+              <input id="rt-search" class="rt-search mono" placeholder="filter results…"
+                     autocomplete="off" />
+              <button id="rt-hide-empty" class="rt-toggle" aria-pressed="false">
+                hide empty
+              </button>
+            </div>
+          </div>
           <div class="results-grid" id="results"></div>
         </section>
 

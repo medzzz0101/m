@@ -137,18 +137,35 @@ export class GraphView {
     ctx.translate(this.offset.x, this.offset.y);
     ctx.scale(this.scale * devicePixelRatio, this.scale * devicePixelRatio);
 
+    // When hovering a node, compute its direct neighbours to highlight.
+    let near = null;
+    if (this.hover) {
+      near = new Set([this.hover.id]);
+      for (const e of this.edges) {
+        if (e.a === this.hover) near.add(e.b.id);
+        if (e.b === this.hover) near.add(e.a.id);
+      }
+    }
+
     // edges
     ctx.lineWidth = 1;
     ctx.font = "9px ui-monospace, monospace";
     for (const e of this.edges) {
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      const lit = near && (e.a === this.hover || e.b === this.hover);
+      const dim = near && !lit;
+      ctx.strokeStyle = lit ? "rgba(139,124,255,0.55)"
+        : dim ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.10)";
+      ctx.lineWidth = lit ? 1.6 : 1;
       ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); ctx.stroke();
-      // edge label at midpoint
-      const mx = (e.a.x + e.b.x) / 2, my = (e.a.y + e.b.y) / 2;
-      ctx.fillStyle = "rgba(168,166,184,0.55)";
-      ctx.fillText(e.label, mx + 2, my - 2);
+      // edge label at midpoint (only when not dimmed, to reduce clutter)
+      if (!dim) {
+        const mx = (e.a.x + e.b.x) / 2, my = (e.a.y + e.b.y) / 2;
+        ctx.fillStyle = lit ? "rgba(200,196,255,0.85)" : "rgba(168,166,184,0.45)";
+        ctx.fillText(e.label, mx + 2, my - 2);
+      }
     }
-    // nodes
+    this._near = near;
+    // nodes  (reuse the `near` set computed above for the edge highlight)
     const now = performance.now();
     for (const n of this.nodes) {
       const c = nodeColor(n.type);
@@ -156,7 +173,8 @@ export class GraphView {
       const age = Math.min(1, (now - (n.born || 0)) / 400);
       const grow = 0.4 + 0.6 * (1 - Math.pow(1 - age, 3));
       const r = n.r * grow;
-      ctx.globalAlpha = age;
+      // Dim nodes not connected to the hovered one.
+      ctx.globalAlpha = age * (near && !near.has(n.id) ? 0.2 : 1);
       ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = c;
       ctx.shadowColor = c; ctx.shadowBlur = n === this.hover ? 18 : 6;

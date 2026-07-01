@@ -224,6 +224,39 @@ body.has-results .landing-only { display: none !important; }
 }
 .results-meta { color: var(--text-3); font-size: 12.5px; }
 
+/* ---------------- Results toolbar (filter/search) ---------------- */
+.results-toolbar {
+  display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
+  margin: 0 0 var(--s4); padding-bottom: var(--s3);
+}
+.rt-filters { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; min-width: 0; }
+.rt-chip {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 11px; padding: 5px 10px; border-radius: var(--r-pill);
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+  transition: all var(--t-fast); user-select: none;
+}
+.rt-chip .rt-dot { width: 7px; height: 7px; border-radius: 50%;
+  background: var(--cat, var(--accent)); }
+.rt-chip[aria-pressed="true"] { color: var(--text); border-color: var(--cat, var(--accent-line));
+  background: color-mix(in srgb, var(--cat, var(--accent)) 14%, transparent); }
+.rt-chip.off { opacity: 0.4; }
+.rt-right { display: flex; align-items: center; gap: var(--s2); }
+.rt-search {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text); font-size: 12px;
+  padding: 7px 10px; width: 150px; outline: none; transition: border-color var(--t-fast);
+}
+.rt-search:focus { border-color: var(--accent-line); }
+.rt-toggle {
+  font-size: 11px; padding: 7px 10px; border-radius: var(--r-sm);
+  background: var(--surface); border: 1px solid var(--border); color: var(--text-3);
+  cursor: pointer; transition: all var(--t-fast); white-space: nowrap;
+}
+.rt-toggle[aria-pressed="true"] { color: var(--accent); border-color: var(--accent-line);
+  background: var(--accent-soft); }
+.card.filtered { display: none; }
+
 /* ---------------- Results grid + cards ---------------- */
 .results-grid {
   display: grid; gap: var(--s4);

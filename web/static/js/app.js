@@ -210,6 +210,16 @@ function bindUI() {
   $("#clear-btn").addEventListener("click", resetToLanding);
   $("#new-search-btn").addEventListener("click", resetToLanding);
 
+  // Results filter toolbar.
+  $("#rt-search").addEventListener("input", (e) => {
+    filterState.search = e.target.value.trim().toLowerCase(); applyResultFilters();
+  });
+  $("#rt-hide-empty").addEventListener("click", (e) => {
+    const on = e.target.getAttribute("aria-pressed") === "true";
+    e.target.setAttribute("aria-pressed", on ? "false" : "true");
+    filterState.hideEmpty = !on; applyResultFilters();
+  });
+
   // Example chips fill the input (and image chip opens the picker).
   $$(".chip[data-fill]").forEach((c) =>
     c.addEventListener("click", () => {
@@ -333,14 +343,62 @@ async function runTarget() {
       if (sk) sk.replaceWith(card); else grid.append(card);
     });
 
-    // Graph hint.
+    // Graph hint + filter toolbar.
     const g = out.graph?.stats;
     if (g) $("#results-summary").textContent =
       `${det.label} · ${out.results.length} modules · ${g.node_count} nodes / ${g.edge_count} edges`;
+    setupResultsToolbar(out.results);
   } catch (e) {
     toast("Run failed: " + e.message);
   } finally {
     progress(false);
+  }
+}
+
+// ------------------------------------------------------------ result filters --
+const filterState = { cats: new Set(), search: "", hideEmpty: false };
+
+function setupResultsToolbar(results) {
+  const bar = $("#results-toolbar");
+  bar.hidden = false;
+  // Categories present in this run, in canonical order.
+  const present = CATS.map(([k]) => k).filter((k) =>
+    results.some((r) => (state.modules.find((m) => m.key === r.module)?.category) === k));
+  filterState.cats = new Set(present);
+  filterState.search = "";
+  filterState.hideEmpty = false;
+
+  const wrap = $("#rt-filters");
+  wrap.innerHTML = "";
+  for (const cat of present) {
+    const label = CATS.find(([k]) => k === cat)[1];
+    const count = results.filter((r) =>
+      state.modules.find((m) => m.key === r.module)?.category === cat).length;
+    const chip = el("button", {
+      class: "rt-chip", "aria-pressed": "true", "data-cat": cat,
+      style: catStyle(cat),
+      onclick: () => {
+        const on = chip.getAttribute("aria-pressed") === "true";
+        chip.setAttribute("aria-pressed", on ? "false" : "true");
+        chip.classList.toggle("off", on);
+        if (on) filterState.cats.delete(cat); else filterState.cats.add(cat);
+        applyResultFilters();
+      },
+    }, el("span", { class: "rt-dot" }), `${label} ${count}`);
+    wrap.append(chip);
+  }
+  $("#rt-search").value = "";
+  $("#rt-hide-empty").setAttribute("aria-pressed", "false");
+  applyResultFilters();
+}
+
+function applyResultFilters() {
+  const q = filterState.search;
+  for (const card of $$("#results .card")) {
+    const catOk = filterState.cats.has(card.dataset.cat);
+    const emptyOk = !filterState.hideEmpty || card.dataset.empty !== "1";
+    const searchOk = !q || (card.dataset.search || "").includes(q);
+    card.classList.toggle("filtered", !(catOk && emptyOk && searchOk));
   }
 }
 
@@ -363,7 +421,13 @@ function renderCard(res, i) {
   const m = state.modules.find((x) => x.key === res.module);
   const conf = res.error ? "err" : (res.confidence || "info");
   const cat = m?.category || "intel";
+  const isEmpty = !!res.error || !(res.findings || []).length;
+  // Searchable text: module name + every finding's text.
+  const searchText = [m?.name || res.module,
+    ...(res.findings || []).flatMap((f) => [f.label, f.summary,
+      ...(f.values || [])])].join(" ").toLowerCase();
   const card = el("div", { class: "card", "data-cat": cat,
+    "data-empty": isEmpty ? "1" : "0", "data-search": searchText,
     style: `--i:${i};${catStyle(cat)}` });
 
   // head
@@ -711,6 +775,7 @@ function resetToLanding() {
   document.body.classList.remove("has-results");
   $("#results").innerHTML = "";
   $("#results-head").hidden = true;
+  $("#results-toolbar").hidden = true;
   $("#target-input").value = "";
   $("#clear-btn").hidden = true;
   $("#type-pill").textContent = "auto";
