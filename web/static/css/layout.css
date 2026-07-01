@@ -30,21 +30,7 @@ body {
 }
 .mono { font-family: var(--font-mono); }
 
-/* --- "Operator" CRT layer: a very subtle scan-line + grid overlay that gives
-   the whole app a terminal/console feel without hurting readability. Original
-   effect, purely decorative, non-interactive, and reduced-motion friendly. --- */
-body::after {
-  content: ""; position: fixed; inset: 0; z-index: 200; pointer-events: none;
-  background:
-    repeating-linear-gradient(0deg, rgba(139,124,255,0.028) 0 1px,
-      transparent 1px 3px),
-    radial-gradient(120% 90% at 50% -10%, transparent 60%, rgba(0,0,0,0.35) 100%);
-  mix-blend-mode: screen; opacity: 0.5;
-}
-@media (prefers-reduced-motion: no-preference) {
-  body::after { animation: crtFlicker 6s steps(60) infinite; }
-}
-@keyframes crtFlicker { 0%,97%,100% { opacity: 0.5; } 98% { opacity: 0.38; } }
+/* (Removed the CRT scanline overlay for a cleaner, more professional surface.) */
 
 /* --- Top progress bar (run indicator) --- */
 .progress-bar {

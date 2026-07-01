@@ -7,25 +7,25 @@
    ========================================================================== */
 :root {
   /* --- Surfaces (dark, layered) --- */
-  --bg:            #0a0a0c;   /* app background, near-black */
-  --surface:       #141418;   /* elevated cards / sidebar */
-  --surface-2:     #1b1b21;   /* hover / nested surfaces */
-  --surface-3:     #232330;   /* active / selected */
+  --bg:            #08090b;   /* app background, clean neutral dark */
+  --surface:       #101216;   /* elevated cards / sidebar */
+  --surface-2:     #171a1f;   /* hover / nested surfaces */
+  --surface-3:     #20242b;   /* active / selected */
 
-  /* --- Borders & lines (soft, 1px) --- */
-  --border:        rgba(255,255,255,0.07);
-  --border-strong: rgba(255,255,255,0.13);
+  /* --- Borders & lines (crisp, professional) --- */
+  --border:        rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.11);
 
-  /* --- Text hierarchy --- */
-  --text:          #ecebf2;   /* primary */
-  --text-2:        #a8a6b8;   /* secondary */
-  --text-3:        #6d6b7e;   /* muted / captions */
+  /* --- Text hierarchy (neutral, high-legibility) --- */
+  --text:          #eef0f3;   /* primary */
+  --text-2:        #9aa0ab;   /* secondary */
+  --text-3:        #626873;   /* muted / captions */
 
-  /* --- THE accent. Violet. Used sparingly for emphasis & actions. --- */
-  --accent:        #8b7cff;
-  --accent-soft:   rgba(139,124,255,0.14);
-  --accent-line:   rgba(139,124,255,0.40);
-  --accent-glow:   rgba(139,124,255,0.30);
+  /* --- THE accent. Violet, restrained (subtle glow, professional). --- */
+  --accent:        #7c6cff;
+  --accent-soft:   rgba(124,108,255,0.12);
+  --accent-line:   rgba(124,108,255,0.34);
+  --accent-glow:   rgba(124,108,255,0.18);
 
   /* --- Per-category accent tints (drive card colour-coding by domain) --- */
   --cat-infrastructure: #8b7cff;   --cat-infrastructure-soft: rgba(139,124,255,0.13);
