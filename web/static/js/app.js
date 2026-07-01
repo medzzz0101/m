@@ -426,7 +426,7 @@ function renderCard(res, i) {
   const searchText = [m?.name || res.module,
     ...(res.findings || []).flatMap((f) => [f.label, f.summary,
       ...(f.values || [])])].join(" ").toLowerCase();
-  const card = el("div", { class: "card", "data-cat": cat,
+  const card = el("div", { class: "card", "data-cat": cat, "data-conf": conf,
     "data-empty": isEmpty ? "1" : "0", "data-search": searchText,
     style: `--i:${i};${catStyle(cat)}` });
 
@@ -465,8 +465,16 @@ function renderCard(res, i) {
 }
 
 function renderFinding(f) {
-  const row = el("div", { class: "finding" });
-  if (f.label) row.append(el("div", { class: "finding-label" }, f.label));
+  // Warning/critical findings (label starts with ⚠) get the red treatment.
+  const warn = typeof f.label === "string" && f.label.trim().startsWith("⚠");
+  const row = el("div", { class: "finding" + (warn ? " finding-warn" : "") });
+  if (f.label) {
+    const lbl = el("div", { class: "finding-label" }, f.label);
+    // A green "N" badge when this finding carries a list of hits.
+    if (Array.isArray(f.values) && f.values.length > 1)
+      lbl.append(el("span", { class: "hit-badge" }, String(f.values.length)));
+    row.append(lbl);
+  }
   if (f.summary) row.append(el("div", { class: "finding-summary" }, f.summary));
 
   // list of values (each copyable)
