@@ -230,6 +230,20 @@ function bindUI() {
     $("#upload-row").hidden = false; $("#file-input").click();
   });
 
+  // Password exposure checker (k-anonymity, entirely on-device).
+  $("#chip-pw").addEventListener("click", openPwCheck);
+  $("#pw-close").addEventListener("click", () => ($("#pwcheck").hidden = true));
+  $("#pwcheck").addEventListener("click", (e) => {
+    if (e.target.id === "pwcheck") $("#pwcheck").hidden = true;
+  });
+  $("#pw-toggle").addEventListener("click", () => {
+    const i = $("#pw-input"); i.type = i.type === "password" ? "text" : "password";
+  });
+  $("#pw-run").addEventListener("click", runPwCheck);
+  $("#pw-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runPwCheck();
+  });
+
   $("#menu-btn")?.addEventListener("click", toggleSidebar);
   $("#cmdk-trigger").addEventListener("click", openCmdk);
   $("#view-graph-btn").addEventListener("click", openGraph);
@@ -715,6 +729,62 @@ function openPrintReport(run, stamp) {
   const w = window.open("", "_blank");
   if (!w) { toast("Allow pop-ups to print the report"); return; }
   w.document.write(html); w.document.close();
+}
+
+// ------------------------------------------------------------ password check --
+// HIBP "Pwned Passwords" k-anonymity, done entirely in the browser: we SHA-1 the
+// password locally, send ONLY the first 5 hex chars of the hash to the range API,
+// then match the returned suffixes on-device. The password itself never leaves
+// the phone — we never send it anywhere and never store it.
+function openPwCheck() {
+  closeSidebar();
+  $("#pwcheck").hidden = false;
+  $("#pw-input").value = "";
+  $("#pw-result").innerHTML = "";
+  setTimeout(() => $("#pw-input").focus(), 40);
+}
+
+async function sha1Hex(str) {
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0"))
+    .join("").toUpperCase();
+}
+
+async function runPwCheck() {
+  const pw = $("#pw-input").value;
+  const out = $("#pw-result");
+  if (!pw) { out.innerHTML = ""; return; }
+  out.innerHTML = '<span class="pw-loading mono">checking on-device…</span>';
+  try {
+    const hash = await sha1Hex(pw);
+    const prefix = hash.slice(0, 5), suffix = hash.slice(5);
+    // Only the 5-char prefix is sent. HIBP supports CORS for client-side use.
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, {
+      headers: { "Add-Padding": "true" },
+    });
+    if (!res.ok) throw new Error("range API " + res.status);
+    const text = await res.text();
+    let count = 0;
+    for (const line of text.split("\n")) {
+      const [suf, c] = line.trim().split(":");
+      if (suf === suffix) { count = parseInt(c, 10) || 0; break; }
+    }
+    if (count > 0) {
+      out.className = "pw-result bad";
+      out.innerHTML = `<div class="pw-verdict">⚠ Pwned</div>
+        <div>This password has appeared in <b>${count.toLocaleString()}</b>
+        known breaches. Do NOT use it anywhere — change it now.</div>`;
+    } else {
+      out.className = "pw-result good";
+      out.innerHTML = `<div class="pw-verdict">✓ Not found</div>
+        <div>This exact password isn't in the Pwned Passwords set. That's good, but
+        it doesn't guarantee it's strong or unique.</div>`;
+    }
+  } catch (e) {
+    out.className = "pw-result";
+    out.innerHTML = `<span class="mono">Check failed: ${esc(e.message)}. Your phone
+      must be able to reach api.pwnedpasswords.com.</span>`;
+  }
 }
 
 // ------------------------------------------------------------ command pal ---

@@ -97,6 +97,7 @@
               <button class="chip" data-fill="torvalds">@torvalds</button>
               <button class="chip" data-fill="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">btc genesis addr</button>
               <button class="chip chip-upload" id="chip-upload">⤓ upload image</button>
+              <button class="chip chip-pw" id="chip-pw">🔑 password check</button>
             </div>
 
             <!-- Image upload affordance -->
@@ -199,6 +200,29 @@
       <input id="cmdk-input" class="cmdk-input" placeholder="Search modules & actions…"
              autocomplete="off" />
       <div class="cmdk-list" id="cmdk-list"></div>
+    </div>
+  </div>
+
+  <!-- ============ Password exposure check (k-anonymity, client-side) ============ -->
+  <div class="cmdk-overlay" id="pwcheck" hidden>
+    <div class="cmdk-panel pw-panel">
+      <div class="pw-head">
+        <span class="pw-title">🔑 Password exposure check</span>
+        <button class="node-pop-close" id="pw-close">✕</button>
+      </div>
+      <p class="pw-explain">
+        Type a password to see if it has appeared in known breaches. It is hashed
+        <b>on your device</b>; only the first 5 characters of the hash are sent
+        (k-anonymity). <b>Your password never leaves this phone.</b>
+      </p>
+      <div class="pw-row">
+        <input id="pw-input" class="pw-input mono" type="password"
+               placeholder="type a password…" autocomplete="off" autocapitalize="off"
+               spellcheck="false" />
+        <button id="pw-toggle" class="pw-eye" title="Show/hide">👁</button>
+      </div>
+      <button id="pw-run" class="btn-primary pw-run">Check</button>
+      <div id="pw-result" class="pw-result"></div>
     </div>
   </div>
 

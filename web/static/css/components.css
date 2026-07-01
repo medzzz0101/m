@@ -455,6 +455,33 @@ body.has-results .landing-only { display: none !important; }
 .cmdk-cat { font-size: 10px; color: var(--text-3); margin-left: auto;
   text-transform: uppercase; letter-spacing: 0.1em; }
 
+/* ---------------- Password exposure check ---------------- */
+.pw-panel { padding: var(--s5); }
+.pw-head { display: flex; align-items: center; justify-content: space-between; }
+.pw-title { font-size: 16px; font-weight: 700; }
+.pw-explain { font-size: 12.5px; color: var(--text-2); line-height: 1.5;
+  margin: var(--s3) 0 var(--s4); }
+.pw-explain b { color: var(--good); }
+.pw-row { display: flex; gap: var(--s2); align-items: center;
+  background: var(--bg); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); padding: 0 var(--s3); }
+.pw-row:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 4px var(--accent-soft); }
+.pw-input { flex: 1; background: none; border: none; outline: none; color: var(--text);
+  font-size: 15px; padding: 14px 4px; letter-spacing: 0.1em; }
+.pw-eye { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.7; }
+.pw-run { width: 100%; margin-top: var(--s3); min-height: 46px; }
+.pw-result { margin-top: var(--s4); font-size: 13.5px; color: var(--text-2);
+  line-height: 1.5; }
+.pw-result.bad { color: var(--bad); }
+.pw-result.good { color: var(--good); }
+.pw-verdict { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+.pw-result.bad .pw-verdict { text-shadow: 0 0 16px rgba(240,138,138,0.4); }
+.pw-result.good .pw-verdict { text-shadow: 0 0 16px rgba(90,214,160,0.4); }
+.pw-result b { color: inherit; }
+.pw-loading { color: var(--text-3); }
+.chip-pw { color: var(--warn); border-color: rgba(232,196,104,0.4);
+  background: var(--warn-soft); font-weight: 600; }
+
 /* ---------------- Toasts ---------------- */
 .toast-host { position: fixed; bottom: calc(var(--s5) + env(safe-area-inset-bottom));
   left: 50%; transform: translateX(-50%); z-index: 90; display: flex;
