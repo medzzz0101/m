@@ -1,197 +1,205 @@
+"""base.py — the vocabulary of the whole engine.
+
+Every module speaks in the same nouns defined here:
+  * InputType   — what KIND of target the user gave us (username, email, ...).
+  * Category    — which investigative domain a module belongs to.
+  * Confidence  — how sure a single finding is.
+  * GraphNode / GraphEdge — typed entities and the links between them.
+  * Finding     — one row of evidence (key/value + confidence) for the table UI.
+  * ModuleResult — everything one module returns for one run.
+  * RunContext  — shared, read-only run info handed to every module.
+  * BaseModule  — the abstract class each capability subclasses.
+
+Keeping this vocabulary tiny is what makes the suite genuinely modular: the
+orchestrator, the graph, and the UI only ever deal with these shapes, never with
+the specifics of any one module.
 """
-core/base.py
-============
-The vocabulary of the whole engine. Everything else (modules, orchestrator,
-graph) is built on the small set of types defined here.
-
-Read this file first — once these ideas click, the rest of the codebase is
-just "many small modules that all speak this language".
-
-Key ideas
----------
-* InputType  : what *kind* of thing the user typed (a domain? a bitcoin
-               address? an image?). Modules declare which input types they can
-               handle, so the orchestrator can route automatically.
-* Category   : which investigative domain a module belongs to (infrastructure /
-               blockchain / image / identity / intel). Drives the sidebar UI.
-* ModuleResult: the SINGLE shape every module returns. Uniform output is what
-               makes a "correlation engine" possible — the graph and the UI can
-               treat every module's output identically.
-* BaseModule : the abstract class every module subclasses. It declares metadata
-               (key/name/category/accepts/...) and implements one async method:
-               `run(value, ctx) -> ModuleResult`.
-"""
-
 from __future__ import annotations
 
 import time
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
 
 # ---------------------------------------------------------------------------
-# 1. The kinds of input the engine understands.
-#    `detect.py` inspects raw user text and decides which of these it is.
+# What kind of thing did the user type in?  The detector (detect.py) maps a raw
+# string to one of these so we can offer only the modules that make sense.
 # ---------------------------------------------------------------------------
 class InputType(str, Enum):
-    USERNAME = "username"
-    EMAIL = "email"
-    DOMAIN = "domain"
-    IP = "ip"
-    URL = "url"
-    BTC_ADDRESS = "btc_address"
-    ETH_ADDRESS = "eth_address"
-    IMAGE = "image"
-    FILE = "file"
-    TEXT = "text"
-    HASH = "hash"
-    PHONE = "phone"
-    MAC = "mac"
+    USERNAME = "username"     # a social handle, e.g. @jack
+    EMAIL    = "email"        # someone@example.com
+    DOMAIN   = "domain"       # example.com
+    IP       = "ip"           # 8.8.8.8 or an IPv6 literal
+    URL      = "url"          # https://example.com/path
+    PHONE    = "phone"        # +14155552671 (metadata only, never owner)
+    IMAGE    = "image"        # an uploaded picture (EXIF / geolocation)
+    HASH     = "hash"         # md5/sha1/sha256 or a favicon mmh3 hash
+    TEXT     = "text"         # free text (fallback: dorks, decoders)
+    UNKNOWN  = "unknown"
 
 
 # ---------------------------------------------------------------------------
-# 2. The investigative domains. Used to GROUP modules in the sidebar.
+# Investigative domains.  These drive the sidebar grouping and card colours.
 # ---------------------------------------------------------------------------
 class Category(str, Enum):
-    INFRASTRUCTURE = "infrastructure"   # attack surface / DNS / TLS / hosting
-    BLOCKCHAIN = "blockchain"           # public on-chain ledger analysis
-    IMAGE = "image"                     # geolocation / metadata / forensics
-    IDENTITY = "identity"               # presence + self-exposure (legal only)
-    INTEL = "intel"                     # correlation, scoring, reporting
+    SOCIAL         = "social"          # username presence, public profiles, channels
+    IDENTITY       = "identity"        # email exposure, self-exposure scoring
+    INFRASTRUCTURE = "infrastructure"  # domains, IPs, DNS, TLS, ASN
+    IMAGE          = "image"           # EXIF/GPS, forensics, geolocation aid
+    INTEL          = "intel"           # aggregation, dorks, wayback, misc lookups
 
 
-# ---------------------------------------------------------------------------
-# 3. Confidence — every finding carries an honest confidence level. OSINT is
-#    full of false positives, so we never pretend a weak signal is a fact.
-# ---------------------------------------------------------------------------
+# How confident is a single finding?  Purely descriptive; the UI colours pills.
 class Confidence(str, Enum):
-    HIGH = "high"          # authoritative source, deterministic
-    MEDIUM = "medium"      # strong heuristic / corroborated
-    LOW = "low"            # suggestive only — treat as a lead, not proof
-    INFO = "info"          # neutral context, not a claim
+    CONFIRMED = "confirmed"   # verified by an authoritative source
+    LIKELY    = "likely"      # strong signal, not authoritative
+    POSSIBLE  = "possible"    # weak / heuristic signal
+    INFO      = "info"        # neutral context, no claim
 
 
 # ---------------------------------------------------------------------------
-# 4. Graph contributions. A module can return nodes/edges to merge into the
-#    shared entity graph. Defined as light dataclasses so modules stay terse.
+# The entity graph vocabulary.  Nodes are deduplicated by (type, value).
 # ---------------------------------------------------------------------------
 @dataclass
 class GraphNode:
-    """A typed entity, e.g. ('domain', 'example.com')."""
-    type: str                       # see graph.NODE_TYPES
-    value: str                      # canonical identifier (lowercased where apt)
-    label: str | None = None        # nicer display label (defaults to value)
-    props: dict[str, Any] = field(default_factory=dict)
+    type: str                 # e.g. "username", "email", "domain", "ip"
+    value: str                # the canonical value (already normalised)
+    label: Optional[str] = None
+    meta: dict[str, Any] = field(default_factory=dict)
 
     @property
     def id(self) -> str:
-        # A node's identity = its type + value. This is how we DEDUPE: two
-        # modules that both mention example.com produce the same id and merge.
-        return f"{self.type}:{self.value}".lower()
+        return f"{self.type}:{self.value}"
 
 
 @dataclass
 class GraphEdge:
-    """A typed relationship between two nodes, e.g. domain -resolves_to-> ip."""
-    src: str                        # source node id
-    dst: str                        # destination node id
-    label: str                      # see graph.EDGE_TYPES (resolves_to, ...)
-    props: dict[str, Any] = field(default_factory=dict)
+    source: str               # a GraphNode.id
+    target: str               # a GraphNode.id
+    kind: str = "related"     # relationship label, e.g. "resolves_to", "found_on"
 
 
-# ---------------------------------------------------------------------------
-# 5. The universal module output. Uniformity here is the whole point.
-# ---------------------------------------------------------------------------
 @dataclass
-class ModuleResult:
-    module: str                              # module key that produced this
-    source: str                              # human label for the data source
-    findings: list[dict[str, Any]] = field(default_factory=list)
+class Finding:
+    """One row of evidence — the atom the dense-table UI renders.
+
+    `key`/`value` are the human columns; `confidence` colours a pill; `link`
+    (optional) makes the value clickable; `pivot` (optional) is a raw target the
+    user can re-run as a fresh investigation (e.g. an IP discovered from a host).
+    """
+    key: str
+    value: str
     confidence: Confidence = Confidence.INFO
-    source_url: str | None = None            # where a human can verify it
-    raw: Any = None                          # raw upstream payload (JSON drawer)
-    nodes: list[GraphNode] = field(default_factory=list)
-    edges: list[GraphEdge] = field(default_factory=list)
-    error: str | None = None                 # set when the module failed
-    started_at: float = field(default_factory=time.time)
-    finished_at: float | None = None
+    link: Optional[str] = None
+    pivot: Optional[str] = None
 
     def to_dict(self) -> dict[str, Any]:
-        """JSON-serialisable form sent to the frontend."""
         d = asdict(self)
         d["confidence"] = self.confidence.value
-        d["duration_ms"] = (
-            int(((self.finished_at or time.time()) - self.started_at) * 1000)
-        )
         return d
 
 
-# ---------------------------------------------------------------------------
-# 6. Run context. Passed to every module's run(). Holds shared services
-#    (HTTP client, cache, config) plus a flag that the user confirmed scope for
-#    `requires_authorized_target` modules.
-# ---------------------------------------------------------------------------
+@dataclass
+class ModuleResult:
+    """Everything a module produces for a single run."""
+    module: str                                   # the module's id
+    ok: bool = True                               # did it complete without error?
+    summary: str = ""                             # one-line human takeaway
+    findings: list[Finding] = field(default_factory=list)
+    nodes: list[GraphNode] = field(default_factory=list)
+    edges: list[GraphEdge] = field(default_factory=list)
+    error: Optional[str] = None                   # populated when ok is False
+    started: float = 0.0
+    elapsed_ms: int = 0
+    extra: dict[str, Any] = field(default_factory=dict)  # module-specific payloads (map points, etc.)
+
+    def add(self, key: str, value: Any, confidence: Confidence = Confidence.INFO,
+            link: str | None = None, pivot: str | None = None) -> None:
+        """Convenience: append a Finding without importing Finding everywhere."""
+        self.findings.append(Finding(key=key, value=str(value),
+                                     confidence=confidence, link=link, pivot=pivot))
+
+    def node(self, type: str, value: str, label: str | None = None, **meta: Any) -> GraphNode:
+        n = GraphNode(type=type, value=value, label=label, meta=meta)
+        self.nodes.append(n)
+        return n
+
+    def edge(self, source: str, target: str, kind: str = "related") -> None:
+        self.edges.append(GraphEdge(source=source, target=target, kind=kind))
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "module": self.module,
+            "ok": self.ok,
+            "summary": self.summary,
+            "findings": [f.to_dict() for f in self.findings],
+            "nodes": [asdict(n) for n in self.nodes],
+            "edges": [asdict(e) for e in self.edges],
+            "error": self.error,
+            "elapsed_ms": self.elapsed_ms,
+            "extra": self.extra,
+        }
+
+
 @dataclass
 class RunContext:
-    http: Any                                # shared httpx.AsyncClient
-    cache: Any                               # core.cache.DiskCache
-    config: dict[str, Any]                   # env-derived settings (API keys…)
-    input_type: InputType | None = None      # detected type of `value`
-    authorized: bool = False                 # user ticked the scope gate
-    upload_path: str | None = None           # local path for IMAGE/FILE inputs
-    extra: dict[str, Any] = field(default_factory=dict)
+    """Read-only info shared with every module during a run.
+
+    `target` is the raw string; `input_type` is the detected InputType; `deep`
+    asks modules to do heavier work; `authorized` is the user's explicit
+    confirmation that they own / are permitted to probe the target (gates the
+    small number of modules that touch a target more actively).
+    """
+    target: str
+    input_type: InputType
+    deep: bool = False
+    authorized: bool = False
+    upload_path: Optional[str] = None   # filesystem path when an image was uploaded
 
 
-# ---------------------------------------------------------------------------
-# 7. The abstract module. Every file in app/modules/ subclasses this.
-# ---------------------------------------------------------------------------
-class BaseModule(ABC):
-    # --- Required metadata (subclasses override as plain class attributes) ---
-    key: str = "base"                        # unique id, e.g. "dns_full"
-    name: str = "Base Module"                # display name
+class BaseModule:
+    """Subclass this to add a capability. The registry auto-discovers subclasses.
+
+    A module declares WHAT it is (id/name/category/inputs/tier) and implements
+    ONE method: `run(ctx) -> ModuleResult`. The orchestrator handles timeouts,
+    caching, rate-limiting, and error isolation, so a module can stay focused on
+    turning a target into findings.
+    """
+
+    id: str = ""                              # unique slug, e.g. "username_presence"
+    name: str = ""                            # human title for the UI
+    description: str = ""                     # one sentence, shown in the grid
     category: Category = Category.INTEL
-    subtitle: str = ""                       # tiny sidebar caption
-    accepts: tuple[InputType, ...] = ()      # input types this module handles
-    needs_network: bool = True               # does it hit the internet?
-    requires_authorized_target: bool = False # gate before running (active recon)
-    description: str = ""                     # longer help text for the UI
+    inputs: tuple[InputType, ...] = ()        # which InputTypes this accepts
+    tier: str = "base"                        # plan gate (see main.TIER_ORDER)
+    requires_authorized: bool = False         # show a scope gate before running
+    timeout: float = 15.0                     # per-run seconds before it's cancelled
 
-    # ----------------------------------------------------------------------
-    # The one method every module MUST implement. Given a value (already known
-    # to be a compatible InputType) and the shared context, do the work and
-    # return a ModuleResult. Should NOT raise for "expected" failures — return
-    # a result with `error` set instead; the orchestrator isolates crashes too.
-    # ----------------------------------------------------------------------
-    @abstractmethod
-    async def run(self, value: str, ctx: RunContext) -> ModuleResult:
-        ...
+    # --- Hard guardrail, enforced by design across the whole suite ------------
+    # Modules here investigate PUBLIC presence/exposure and PUBLIC infrastructure
+    # only. No module resolves a handle/email/phone to a private person's real
+    # identity, home, or contact details; none retrieves third-party breach
+    # contents, stealer logs, or scrapes a person's private life. This attribute
+    # documents that contract for every module that renders it in the UI.
+    public_data_only: bool = True
 
-    # --- Convenience helpers so modules stay short --------------------------
-    def result(self, **kwargs) -> ModuleResult:
-        """Factory that stamps the module key/source automatically."""
-        kwargs.setdefault("module", self.key)
-        kwargs.setdefault("source", self.name)
-        return ModuleResult(**kwargs)
+    async def run(self, ctx: RunContext) -> ModuleResult:  # pragma: no cover
+        raise NotImplementedError
 
-    def accepts_type(self, itype: InputType) -> bool:
-        return itype in self.accepts
-
-    # Subscription tier this module belongs to (set post-discovery from a central
-    # map in app.main). Higher tiers = more/deeper capabilities.
-    tier: str = "base"
+    # Convenience factory so modules write `self.result()` and start filling it.
+    def result(self) -> ModuleResult:
+        return ModuleResult(module=self.id, started=time.time())
 
     def manifest(self) -> dict[str, Any]:
-        """Metadata blob the frontend uses to render the sidebar/registry."""
+        """The JSON the UI uses to render this module in the grid/sidebar."""
         return {
-            "key": self.key,
+            "id": self.id,
             "name": self.name,
-            "category": self.category.value,
-            "subtitle": self.subtitle,
             "description": self.description,
-            "accepts": [t.value for t in self.accepts],
-            "needs_network": self.needs_network,
-            "requires_authorized_target": self.requires_authorized_target,
-            "tier": getattr(self, "tier", "base"),
+            "category": self.category.value,
+            "inputs": [i.value for i in self.inputs],
+            "tier": self.tier,
+            "requires_authorized": self.requires_authorized,
+            "public_data_only": self.public_data_only,
         }

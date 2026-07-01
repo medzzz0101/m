@@ -1,82 +1,78 @@
 /* ==========================================================================
-   tokens.css — the design system in one place.
-   Every colour, space, radius, shadow, and timing the UI uses is a variable
-   here. Change the accent in ONE spot and the whole product re-themes.
-   The palette follows the brief: deep near-black, elevated surfaces, ONE
-   confident violet accent used sparingly.
+   tokens.css — the entire design language as variables.
+   LATTICE look: deep near-black console, ONE restrained violet accent, crisp
+   hairline borders, monospace for data. Change a value here → the whole app
+   re-themes. Both mobile and desktop read from these same tokens.
    ========================================================================== */
 :root {
-  /* --- Surfaces (dark, layered) --- */
-  --bg:            #08090b;   /* app background, clean neutral dark */
-  --surface:       #101216;   /* elevated cards / sidebar */
-  --surface-2:     #171a1f;   /* hover / nested surfaces */
-  --surface-3:     #20242b;   /* active / selected */
+  /* Surfaces — layered dark */
+  --bg:        #070809;
+  --bg-2:      #0b0d10;
+  --surface:   #0f1216;
+  --surface-2: #151920;
+  --surface-3: #1d222b;
+  --hover:     #1a1f27;
 
-  /* --- Borders & lines (crisp, professional) --- */
-  --border:        rgba(255,255,255,0.06);
-  --border-strong: rgba(255,255,255,0.11);
+  /* Hairlines */
+  --line:        rgba(255,255,255,0.07);
+  --line-strong: rgba(255,255,255,0.13);
 
-  /* --- Text hierarchy (neutral, high-legibility) --- */
-  --text:          #eef0f3;   /* primary */
-  --text-2:        #9aa0ab;   /* secondary */
-  --text-3:        #626873;   /* muted / captions */
+  /* Text */
+  --text:   #e9ecf1;
+  --text-2: #98a0ad;
+  --text-3: #5c636f;
 
-  /* --- THE accent. Violet, restrained (subtle glow, professional). --- */
-  --accent:        #7c6cff;
-  --accent-soft:   rgba(124,108,255,0.12);
-  --accent-line:   rgba(124,108,255,0.34);
-  --accent-glow:   rgba(124,108,255,0.18);
+  /* THE accent — violet, used sparingly */
+  --accent:      #8b7cff;
+  --accent-2:    #a99bff;
+  --accent-soft: rgba(139,124,255,0.12);
+  --accent-line: rgba(139,124,255,0.32);
+  --accent-glow: rgba(139,124,255,0.28);
 
-  /* --- Per-category accent tints (drive card colour-coding by domain) --- */
-  --cat-infrastructure: #8b7cff;   --cat-infrastructure-soft: rgba(139,124,255,0.13);
-  --cat-blockchain:     #f7a13a;   --cat-blockchain-soft:     rgba(247,161,58,0.13);
-  --cat-image:          #5ad6a0;   --cat-image-soft:          rgba(90,214,160,0.13);
-  --cat-identity:       #e892d0;   --cat-identity-soft:       rgba(232,146,208,0.13);
-  --cat-intel:          #7fb6f0;   --cat-intel-soft:          rgba(127,182,240,0.13);
+  /* Category hues (sidebar + card accents) */
+  --c-social:         #8b7cff;
+  --c-identity:       #e892d0;
+  --c-infrastructure: #7fb6f0;
+  --c-image:          #5ad6a0;
+  --c-intel:          #e8c468;
 
-  /* --- Semantic pills (confidence / status). Muted, never neon. --- */
-  --good:   #5ad6a0;  --good-soft:   rgba(90,214,160,0.13);
-  --warn:   #e8c468;  --warn-soft:   rgba(232,196,104,0.13);
-  --bad:    #f08a8a;  --bad-soft:    rgba(240,138,138,0.13);
-  --info:   #7fb6f0;  --info-soft:   rgba(127,182,240,0.13);
+  /* Confidence / status */
+  --confirmed: #5ad6a0; --confirmed-s: rgba(90,214,160,0.13);
+  --likely:    #7fb6f0; --likely-s:    rgba(127,182,240,0.13);
+  --possible:  #e8c468; --possible-s:  rgba(232,196,104,0.13);
+  --info:      #7b8494; --info-s:      rgba(123,132,148,0.10);
+  --bad:       #f08a8a; --bad-s:       rgba(240,138,138,0.13);
 
-  /* --- Node-type colours for the graph view (consistent everywhere) --- */
-  --n-domain: #8b7cff;  --n-ip: #7fb6f0;  --n-subdomain:#a99bff;
-  --n-host: #5ad6a0;    --n-tech:#e8c468; --n-cert:#f0a07f;
-  --n-asn:#9d7ff0;      --n-btc_address:#f7931a; --n-eth_address:#a0a0f0;
-  --n-tx:#c0c0d0;       --n-image:#5ad6a0; --n-geo:#f08a8a;
-  --n-username:#e892d0; --n-org:#ffffff;  --n-service:#7fb6f0;
-  --n-email:#e8c468;    --n-favicon:#a99bff; --n-default:#6d6b7e;
+  /* Graph node hues */
+  --n-username:#8b7cff; --n-profile:#a99bff; --n-email:#e8c468;
+  --n-domain:#7fb6f0;   --n-subdomain:#9ecbf5; --n-ip:#5ad6a0;
+  --n-geo:#f08a8a;      --n-tech:#e892d0;      --n-org:#ffffff;
+  --n-url:#c0c6d0;      --n-default:#6d6b7e;
 
-  /* --- Type --- */
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter,
-             system-ui, sans-serif;
-  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace,
-               Menlo, Consolas, monospace;
+  /* Type */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
+  --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
 
-  /* --- Spacing scale (8px-ish rhythm) --- */
-  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
-  --s6: 32px; --s7: 48px; --s8: 64px;
+  /* Space scale */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
 
-  /* --- Radii --- */
-  --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 22px; --r-pill: 999px;
+  /* Radii */
+  --r1:8px; --r2:12px; --r3:16px; --pill:999px;
 
-  /* --- Shadows (soft, low, dark-friendly) --- */
-  --shadow-1: 0 1px 2px rgba(0,0,0,0.4);
-  --shadow-2: 0 8px 24px rgba(0,0,0,0.45);
-  --shadow-pop: 0 24px 60px rgba(0,0,0,0.6);
+  /* Shadow */
+  --shadow: 0 12px 40px rgba(0,0,0,0.5);
+  --shadow-pop: 0 24px 70px rgba(0,0,0,0.65);
 
-  /* --- Motion (150–250ms, the brief's range) --- */
-  --t-fast: 150ms cubic-bezier(.4,0,.2,1);
+  /* Motion */
+  --t-fast: 140ms cubic-bezier(.4,0,.2,1);
   --t-med:  220ms cubic-bezier(.4,0,.2,1);
 
-  /* --- Layout metrics --- */
-  --sidebar-w: 268px;
-  --topbar-h: 56px;
-  --tabbar-h: 60px;
+  /* Metrics */
+  --sidebar: 264px;
+  --topbar: 58px;
+  --tabbar: 62px;
 }
 
-/* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
 }

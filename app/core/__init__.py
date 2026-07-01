@@ -1,1 +1,1 @@
-"""Core engine package: base types, registry, orchestrator, graph, cache."""
+"""Core framework: the small, stable pieces every module builds on."""

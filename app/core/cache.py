@@ -1,52 +1,42 @@
-"""
-core/cache.py
-=============
-A tiny on-disk cache. OSINT lookups hit rate-limited public APIs, so we never
-want to ask the same question twice within a short window. This keeps the UI
-snappy and keeps us polite to free services like crt.sh and mempool.space.
+"""cache.py — a tiny disk cache so repeated runs are fast and kind to APIs.
 
-Design: one JSON file per cache key (key = sha1 of "namespace:value"). Entries
-carry a timestamp; reads past the TTL are treated as misses. Simple, debuggable,
-no external dependency.
+Keyed by module id + target, values are JSON blobs with a stored timestamp.
+Entries older than their TTL are ignored. This is intentionally minimal — no
+eviction thread, no locking beyond the filesystem; good enough for a self-hosted
+single-user-ish console and easy to read.
 """
-
 from __future__ import annotations
 
 import hashlib
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 
 class DiskCache:
-    def __init__(self, root: str | Path, default_ttl: int = 3600):
+    def __init__(self, root: str | Path) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
-        self.default_ttl = default_ttl
 
-    def _path(self, namespace: str, key: str) -> Path:
-        h = hashlib.sha1(f"{namespace}:{key}".encode()).hexdigest()
+    def _path(self, key: str) -> Path:
+        h = hashlib.sha256(key.encode()).hexdigest()[:24]
         return self.root / f"{h}.json"
 
-    def get(self, namespace: str, key: str, ttl: int | None = None) -> Any | None:
-        """Return cached value or None if missing/expired."""
-        p = self._path(namespace, key)
+    def get(self, key: str, ttl: float) -> Optional[Any]:
+        p = self._path(key)
         if not p.exists():
             return None
         try:
             blob = json.loads(p.read_text())
-        except (json.JSONDecodeError, OSError):
+            if time.time() - blob["_ts"] > ttl:
+                return None
+            return blob["data"]
+        except Exception:
             return None
-        age = time.time() - blob.get("_ts", 0)
-        if age > (ttl if ttl is not None else self.default_ttl):
-            return None
-        return blob.get("value")
 
-    def set(self, namespace: str, key: str, value: Any) -> None:
-        p = self._path(namespace, key)
+    def set(self, key: str, data: Any) -> None:
         try:
-            p.write_text(json.dumps({"_ts": time.time(), "value": value}))
-        except (OSError, TypeError):
-            # Caching is best-effort; never let a cache write break a run.
-            pass
+            self._path(key).write_text(json.dumps({"_ts": time.time(), "data": data}))
+        except Exception:
+            pass  # a cache write failing must never break a run

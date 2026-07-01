@@ -1,336 +1,75 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <!-- viewport-fit=cover lets us paint into the iPhone notch/safe areas -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0c" />
-  <title>OSINT Correlation Engine</title>
-
-  <!-- PWA: manifest makes it installable; theme-color matches the shell -->
-  <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
-  <link rel="icon" type="image/png" href="/static/icons/icon-192.png" />
-
-  <!-- Leaflet (maps) — vendored locally (the CDN is blocked by egress + it
-       makes the PWA work offline). CSS up front; JS deferred below. -->
-  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css" />
-
-  <!-- Our modular styles. Split by concern so each file stays readable. -->
-  <link rel="stylesheet" href="/static/css/tokens.css" />
-  <link rel="stylesheet" href="/static/css/layout.css" />
-  <link rel="stylesheet" href="/static/css/components.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#070809">
+<title>LATTICE — public-signal correlation console</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/components.css">
 </head>
 <body>
-  <!-- Boot sequence: a one-time "console powering up" intro (skippable) -->
-  <div id="boot" class="boot">
-    <div class="boot-inner">
-      <div class="boot-logo">◈ CORRELATE</div>
-      <div class="boot-sub mono">intelligence console</div>
-      <div id="boot-log" class="boot-log mono"></div>
-    </div>
-    <div class="boot-skip mono">tap to skip</div>
+
+<!-- Boot sequence -->
+<div class="boot" id="boot">
+  <div class="boot-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>
+    <span class="t">LATTICE</span>
   </div>
+  <div class="boot-lines" id="boot-lines"></div>
+  <div class="boot-skip">TAP TO SKIP</div>
+</div>
 
-  <!-- Top progress bar: animates during a run (driven by app.js) -->
-  <div id="progress-bar" class="progress-bar" aria-hidden="true"></div>
+<div class="progress" id="progress"></div>
 
-  <!-- ===================== SUITE SHELL ===================== -->
-  <div class="shell">
-
-    <!-- Backdrop: tap to close the mobile sidebar -->
-    <div class="sidebar-backdrop" id="sidebar-backdrop" hidden></div>
-
-    <!-- ---------- Left sidebar (desktop) / hidden on mobile ---------- -->
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="brand-mark">◈</div>
-        <div class="brand-text">
-          <div class="brand-title">CORRELATE</div>
-          <div class="brand-sub">osint engine</div>
-        </div>
-        <button class="sidebar-close only-mobile" id="sidebar-close" aria-label="Close">✕</button>
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg></div>
+      <div>
+        <div class="brand-name">LATTICE</div>
+        <div class="brand-sub">correlation console</div>
       </div>
-
-      <!-- Subscription plan selector -->
-      <div class="plan-box" id="plan-box"></div>
-
-      <!-- Theme selector -->
-      <div class="theme-box" id="theme-box"></div>
-
-      <!-- Module catalog, grouped by category. Populated by app.js -->
-      <nav class="module-nav" id="module-nav" aria-label="Modules"></nav>
-
-      <div class="sidebar-foot">
-        <span class="dot" id="conn-dot"></span>
-        <span id="conn-text" class="mono">connecting…</span>
-      </div>
-    </aside>
-
-    <!-- ---------- Main column ---------- -->
-    <div class="main">
-
-      <!-- Sticky header with command-palette trigger -->
-      <header class="topbar">
-        <button class="icon-btn only-mobile" id="menu-btn" aria-label="Menu">≡</button>
-        <div class="topbar-title" id="topbar-title">Workspace</div>
-        <button class="cmdk-trigger" id="cmdk-trigger" aria-label="Command palette">
-          <span class="mono">⌘K</span>
-        </button>
-      </header>
-
-      <!-- Scrollable content area; views swap in here -->
-      <main class="content" id="content">
-
-        <!-- ===== Workspace view ===== -->
-        <section class="view" id="view-workspace">
-
-          <!-- ----- HERO (landing) ----- -->
-          <div class="hero landing-only" id="hero">
-            <!-- Original hand-drawn SVG: an intel "radar" — concentric rings,
-                 crosshair, a rotating sweep, and pulsing target blips linked by
-                 correlation lines. Purely decorative, all CSS-animated. -->
-            <div class="hero-visual" aria-hidden="true">
-              <svg viewBox="0 0 240 240" class="radar">
-                <defs>
-                  <radialGradient id="sweepG" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.55"/>
-                    <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
-                  </radialGradient>
-                  <filter id="glow"><feGaussianBlur stdDeviation="2.2" result="b"/>
-                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-                </defs>
-                <g class="radar-rings" stroke="var(--border-strong)" fill="none">
-                  <circle cx="120" cy="120" r="34"/><circle cx="120" cy="120" r="66"/>
-                  <circle cx="120" cy="120" r="98"/>
-                  <line x1="120" y1="18" x2="120" y2="222"/>
-                  <line x1="18" y1="120" x2="222" y2="120"/>
-                </g>
-                <!-- correlation links between blips -->
-                <g class="radar-links" stroke="var(--accent-line)" fill="none">
-                  <line x1="120" y1="120" x2="176" y2="78"/>
-                  <line x1="120" y1="120" x2="70" y2="150"/>
-                  <line x1="176" y1="78" x2="150" y2="176"/>
-                  <line x1="70" y1="150" x2="150" y2="176"/>
-                </g>
-                <!-- rotating sweep -->
-                <g class="radar-sweep">
-                  <path d="M120 120 L120 20 A100 100 0 0 1 210 90 Z" fill="url(#sweepG)"/>
-                  <line x1="120" y1="120" x2="120" y2="20" stroke="var(--accent)" stroke-width="1.5"/>
-                </g>
-                <!-- target blips -->
-                <g filter="url(#glow)">
-                  <circle class="blip b1" cx="176" cy="78"  r="4" fill="var(--n-domain)"/>
-                  <circle class="blip b2" cx="70"  cy="150" r="4" fill="var(--n-ip)"/>
-                  <circle class="blip b3" cx="150" cy="176" r="4" fill="var(--cat-blockchain)"/>
-                  <circle class="blip b4" cx="120" cy="120" r="5" fill="#fff"/>
-                  <circle class="blip b5" cx="196" cy="150" r="3" fill="var(--cat-identity)"/>
-                </g>
-              </svg>
-            </div>
-            <div class="hero-badge">
-              <span class="hero-badge-dot"></span>
-              PUBLIC-DATA INTELLIGENCE CONSOLE
-            </div>
-            <h1 class="hero-title">Correlate everything public.</h1>
-          </div>
-
-          <!-- ----- COMMAND BAR (always present, but framed, not naked) ----- -->
-          <div class="command" id="command">
-            <div class="input-wrap">
-              <span class="input-type-pill" id="type-pill">auto</span>
-              <input id="target-input" class="target-input mono" type="text"
-                     placeholder="domain · IP · URL · BTC/ETH · @username"
-                     autocomplete="off" autocapitalize="off" spellcheck="false" />
-              <button id="clear-btn" class="clear-btn" title="Clear" hidden>✕</button>
-              <button id="run-btn" class="btn-primary">Run</button>
-            </div>
-
-            <!-- Deep Scan power toggle (auto-pivots the graph; depth by plan) -->
-            <div class="deep-row">
-              <button class="deep-toggle" id="deep-toggle" aria-pressed="false">
-                <span class="deep-track"><span class="deep-knob"></span></span>
-                <span class="deep-text">⚡ Deep Scan</span>
-                <span class="deep-hint mono" id="deep-hint"></span>
-              </button>
-            </div>
-
-            <!-- Try-this example chips (tap to fill) -->
-            <div class="chips landing-only" id="example-chips">
-              <button class="chip" data-fill="example.com">example.com</button>
-              <button class="chip" data-fill="1.1.1.1">1.1.1.1</button>
-              <button class="chip" data-fill="torvalds">@torvalds</button>
-              <button class="chip" data-fill="1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa">btc genesis addr</button>
-              <button class="chip chip-upload" id="chip-upload">⤓ upload image</button>
-              <button class="chip chip-pw" id="chip-pw">🔑 password check</button>
-            </div>
-
-            <!-- Image upload affordance -->
-            <div class="upload-row" id="upload-row" hidden>
-              <label class="upload-chip">
-                <input type="file" id="file-input" accept="image/*" hidden />
-                <span>＋ Choose image (EXIF / GPS)</span>
-              </label>
-              <span class="upload-name mono" id="upload-name"></span>
-            </div>
-
-            <!-- Authorization gate for active-recon modules -->
-            <div class="scope-gate" id="scope-gate" hidden>
-              <label class="check">
-                <input type="checkbox" id="scope-check" />
-                <span>I am authorized to actively probe this target (port/service
-                  scans). I confirm it is mine or I have permission.</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- ----- CATEGORY TILES (landing) ----- -->
-          <div class="home-cats landing-only" id="home-cats"></div>
-
-          <!-- ----- STATS STRIP (landing) ----- -->
-          <div class="stat-strip landing-only" id="stat-strip"></div>
-
-          <!-- ----- CAPABILITY DECK (landing) ----- -->
-          <div class="deck-wrap landing-only" id="deck-wrap">
-            <div class="deck-head">
-              <span>Capabilities</span>
-              <span class="deck-hint mono">tap a card to load an example</span>
-            </div>
-            <div class="deck" id="deck"></div>
-          </div>
-
-          <!-- ----- RESULTS (shown after a run) ----- -->
-          <div class="results-head" id="results-head" hidden>
-            <div class="results-meta">
-              <span id="results-summary" class="mono"></span>
-            </div>
-            <div class="results-actions">
-              <button class="btn-ghost" id="view-graph-btn">◇ Graph</button>
-              <div class="report-menu">
-                <button class="btn-ghost" id="report-btn">⤓ Report</button>
-                <div class="report-dropdown" id="report-dropdown" hidden>
-                  <button data-fmt="json">JSON</button>
-                  <button data-fmt="csv">CSV</button>
-                  <button data-fmt="print">Print / PDF</button>
-                </div>
-              </div>
-              <button class="btn-ghost" id="new-search-btn">＋ New</button>
-            </div>
-          </div>
-          <!-- ===== Bento dashboard (summary tiles, appear after a run) ===== -->
-          <div class="dash" id="dash" hidden></div>
-
-          <!-- Filter/search toolbar (appears with results) -->
-          <div class="results-toolbar" id="results-toolbar" hidden>
-            <div class="rt-filters" id="rt-filters"></div>
-            <div class="rt-right">
-              <input id="rt-search" class="rt-search mono" placeholder="filter results…"
-                     autocomplete="off" />
-              <button id="rt-hide-empty" class="rt-toggle" aria-pressed="false">
-                hide empty
-              </button>
-            </div>
-          </div>
-          <div class="results-grid" id="results"></div>
-        </section>
-
-        <!-- ===== Graph view (built in Phase 2; placeholder shell now) ===== -->
-        <section class="view" id="view-graph" hidden>
-          <div class="graph-toolbar">
-            <button class="btn-ghost" id="graph-back">← Back</button>
-            <span class="mono" id="graph-stats">—</span>
-          </div>
-          <div class="graph-legend" id="graph-legend"></div>
-          <div id="graph-canvas" class="graph-canvas">
-            <div class="empty-state"><p>Run a target to populate the graph.</p></div>
-          </div>
-          <!-- Node inspector popover (click a node) -->
-          <div class="node-pop" id="node-pop" hidden>
-            <div class="node-pop-head">
-              <span class="node-pop-type mono" id="node-pop-type"></span>
-              <button class="node-pop-close" id="node-pop-close">✕</button>
-            </div>
-            <div class="node-pop-title mono" id="node-pop-title"></div>
-            <div class="node-pop-body" id="node-pop-body"></div>
-            <button class="btn-primary node-pop-expand" id="node-pop-expand" hidden>
-              ⤢ Expand this node
-            </button>
-          </div>
-        </section>
-
-      </main>
-
-      <!-- Bottom tab bar (mobile only) -->
-      <nav class="tabbar only-mobile" id="tabbar" aria-label="Sections"></nav>
+      <button class="sidebar-x only-mobile" id="sidebar-x">✕</button>
     </div>
-  </div>
-
-  <!-- ===================== Command palette ===================== -->
-  <div class="cmdk-overlay" id="cmdk" hidden>
-    <div class="cmdk-panel">
-      <input id="cmdk-input" class="cmdk-input" placeholder="Search modules & actions…"
-             autocomplete="off" />
-      <div class="cmdk-list" id="cmdk-list"></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <span class="dot" id="health-dot"></span>
+      <span id="health-txt">connecting…</span>
     </div>
-  </div>
+  </aside>
 
-  <!-- ============ Password exposure check (k-anonymity, client-side) ============ -->
-  <div class="cmdk-overlay" id="pwcheck" hidden>
-    <div class="cmdk-panel pw-panel">
-      <div class="pw-head">
-        <span class="pw-title">🔑 Password exposure check</span>
-        <button class="node-pop-close" id="pw-close">✕</button>
-      </div>
-      <p class="pw-explain">
-        Type a password to see if it has appeared in known breaches. It is hashed
-        <b>on your device</b>; only the first 5 characters of the hash are sent
-        (k-anonymity). <b>Your password never leaves this phone.</b>
-      </p>
-      <div class="pw-row">
-        <input id="pw-input" class="pw-input mono" type="password"
-               placeholder="type a password…" autocomplete="off" autocapitalize="off"
-               spellcheck="false" />
-        <button id="pw-toggle" class="pw-eye" title="Show/hide">👁</button>
-      </div>
-      <button id="pw-run" class="btn-primary pw-run">Check</button>
-      <div id="pw-result" class="pw-result"></div>
-    </div>
-  </div>
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="menu-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div class="topbar-title" id="topbar-title">Console</div>
+      <button class="k-btn" id="cmdk-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><span>Search</span><kbd>⌘K</kbd></button>
+    </header>
 
-  <!-- ===================== Pricing / Upgrade ===================== -->
-  <div class="pricing-overlay" id="pricing" hidden>
-    <div class="pricing-shell">
-      <div class="pricing-head">
-        <div>
-          <div class="pricing-title">Choose your plan</div>
-          <div class="pricing-sub">Every plan unlocks more modules and deeper
-            correlation. Public-data OSINT only.</div>
-        </div>
-        <button class="node-pop-close" id="pricing-close">✕</button>
-      </div>
-      <div class="pricing-grid" id="pricing-grid"></div>
-      <div class="pricing-foot mono">Prices are illustrative · billed monthly · cancel anytime</div>
-    </div>
-  </div>
+    <div class="content view" id="content"><!-- rendered by app.js --></div>
 
-  <!-- ===================== Checkout (demo) ===================== -->
-  <div class="cmdk-overlay" id="checkout" hidden>
-    <div class="cmdk-panel co-panel">
-      <div class="pw-head">
-        <span class="pw-title">Checkout</span>
-        <button class="node-pop-close" id="co-close">✕</button>
-      </div>
-      <div id="co-body" class="co-body"></div>
-    </div>
-  </div>
+    <!-- Bottom tabs (mobile) -->
+    <nav class="tabbar">
+      <button class="tab active" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Modules</button>
+      <button class="tab" data-view="results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Results</button>
+      <button class="tab" data-view="graph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l8 1M16 10l-3 6M8 8l4 8"/></svg>Graph</button>
+      <button class="tab" data-view="pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Plans</button>
+    </nav>
+  </main>
+</div>
 
-  <!-- Toast host (copy confirmations etc.) -->
-  <div class="toast-host" id="toast-host" aria-live="polite"></div>
+<!-- hidden file input for image upload -->
+<input type="file" id="file-input" accept="image/*" hidden>
 
-  <!-- Scripts: load order matters (helpers -> graph -> app). All ES modules. -->
-  <script src="/static/vendor/leaflet/leaflet.js" defer></script>
-  <script src="/static/js/util.js" type="module"></script>
-  <script src="/static/js/graph.js" type="module"></script>
-  <script src="/static/js/app.js" type="module"></script>
+<!-- Overlays get injected by app.js -->
+<div id="overlays"></div>
+
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script type="module" src="/static/js/app.js"></script>
 </body>
 </html>

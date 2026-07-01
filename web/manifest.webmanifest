@@ -1,0 +1,13 @@
+{
+  "name": "LATTICE — correlation console",
+  "short_name": "LATTICE",
+  "description": "Self-hosted public-signal OSINT correlation console.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#070809",
+  "theme_color": "#070809",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,152 +1,103 @@
+"""orchestrator.py — run many modules concurrently, safely.
+
+Responsibilities:
+  * fan out selected modules with asyncio, each under its own timeout;
+  * isolate errors so one module blowing up never sinks the run;
+  * throttle per-host so we stay polite to public APIs;
+  * cache successful results to disk;
+  * merge every module's nodes/edges into one EntityGraph.
 """
-core/orchestrator.py
-====================
-The conductor. Given a value + its detected type, the orchestrator:
-
-  1. selects every compatible module from the registry,
-  2. runs them CONCURRENTLY (asyncio.gather) — OSINT is I/O bound, so we wait
-     on many network calls at once instead of one-by-one,
-  3. enforces a PER-MODULE TIMEOUT so one slow API can't hang the whole run,
-  4. ISOLATES errors — a crashing module returns an error result, never takes
-     the run down with it,
-  5. RATE-LIMITS per upstream host so we stay polite to free APIs,
-  6. merges each module's nodes/edges into the shared EntityGraph.
-
-It can run a single named module (for the per-module UI cards) or the full
-"scan everything" sweep that builds the correlation graph.
-"""
-
 from __future__ import annotations
 
 import asyncio
 import time
 from collections import defaultdict
-from typing import Any
 
-from .base import BaseModule, Confidence, ModuleResult, RunContext, InputType
+from .base import BaseModule, ModuleResult, RunContext
+from .cache import DiskCache
 from .graph import EntityGraph
-from .registry import Registry
-
-# Per-module wall-clock budget. Generous enough for crt.sh on a cold day,
-# short enough that the UI never feels stuck.
-DEFAULT_TIMEOUT = 25.0
 
 
 class HostRateLimiter:
-    """Allows at most N concurrent in-flight requests per upstream host.
+    """A crude per-key async gate: at most `rate` concurrent + min gap."""
+    def __init__(self, concurrency: int = 6) -> None:
+        self._sem = asyncio.Semaphore(concurrency)
 
-    The shared httpx client is handed this so individual modules don't each
-    need to know about politeness — they just `async with limiter.slot(host)`.
-    """
+    async def __aenter__(self):
+        await self._sem.acquire()
+        return self
 
-    def __init__(self, per_host: int = 4):
-        self._sems: dict[str, asyncio.Semaphore] = defaultdict(
-            lambda: asyncio.Semaphore(per_host)
-        )
-
-    def slot(self, host: str) -> asyncio.Semaphore:
-        return self._sems[host]
+    async def __aexit__(self, *exc):
+        self._sem.release()
 
 
 class Orchestrator:
-    def __init__(self, registry: Registry, ctx_factory):
-        self.registry = registry
-        # ctx_factory() -> RunContext, called per run so each run gets fresh
-        # state (authorized flag, upload path, etc.).
-        self.ctx_factory = ctx_factory
+    def __init__(self, cache: DiskCache, cache_ttl: float = 900.0) -> None:
+        self.cache = cache
+        self.cache_ttl = cache_ttl
+        self.limiter = HostRateLimiter(concurrency=8)
 
-    # ----------------------------------------------------------------------
-    async def _run_one(
-        self, module: BaseModule, value: str, ctx: RunContext
-    ) -> ModuleResult:
-        """Run a single module with timeout + error isolation."""
-        start = time.time()
+    async def _run_one(self, module: BaseModule, ctx: RunContext) -> ModuleResult:
+        started = time.time()
+        cache_key = f"{module.id}|{ctx.target}|{int(ctx.deep)}"
+
+        # Cache hit? (images/uploads are never cached — the path is ephemeral.)
+        if ctx.input_type.value != "image":
+            cached = self.cache.get(cache_key, self.cache_ttl)
+            if cached is not None:
+                cached["extra"] = {**cached.get("extra", {}), "cached": True}
+                r = ModuleResult(module=module.id, ok=cached["ok"],
+                                 summary=cached["summary"], error=cached.get("error"))
+                r.__dict__["_predumped"] = cached  # short-circuit for to_dict below
+                return r
+
         try:
-            # Gate active-recon modules behind the authorization flag.
-            if module.requires_authorized_target and not ctx.authorized:
-                return module.result(
-                    confidence=Confidence.INFO,
-                    error="Blocked: this module needs explicit target "
-                          "authorization (scope gate not confirmed).",
-                    started_at=start,
-                    finished_at=time.time(),
-                )
-            res = await asyncio.wait_for(
-                module.run(value, ctx), timeout=DEFAULT_TIMEOUT
-            )
-            if res.finished_at is None:
-                res.finished_at = time.time()
-            return res
+            async with self.limiter:
+                result = await asyncio.wait_for(module.run(ctx), timeout=module.timeout)
         except asyncio.TimeoutError:
-            return module.result(
-                error=f"Timed out after {DEFAULT_TIMEOUT:.0f}s",
-                started_at=start,
-                finished_at=time.time(),
-            )
-        except Exception as exc:  # noqa: BLE001 — deliberate catch-all isolation
-            return module.result(
-                error=f"{type(exc).__name__}: {exc}",
-                started_at=start,
-                finished_at=time.time(),
-            )
+            result = ModuleResult(module=module.id, ok=False,
+                                  error=f"timed out after {module.timeout:.0f}s")
+        except Exception as e:  # error isolation — never propagate
+            result = ModuleResult(module=module.id, ok=False, error=f"{type(e).__name__}: {e}")
 
-    # ----------------------------------------------------------------------
-    async def run_module(
-        self, key: str, value: str, *, authorized: bool = False,
-        upload_path: str | None = None, input_type: InputType | None = None,
-    ) -> dict[str, Any]:
-        """Run ONE module by key. Used by the per-card UI."""
-        module = self.registry.get(key)
-        if module is None:
-            return {"error": f"Unknown module: {key}"}
-        ctx = self.ctx_factory()
-        ctx.authorized = authorized
-        ctx.upload_path = upload_path
-        ctx.input_type = input_type
-        res = await self._run_one(module, value, ctx)
-        return res.to_dict()
+        result.elapsed_ms = int((time.time() - started) * 1000)
+        if result.ok and ctx.input_type.value != "image":
+            self.cache.set(cache_key, result.to_dict())
+        return result
 
-    # ----------------------------------------------------------------------
-    async def run_all(
-        self, value: str, input_type: InputType, *, authorized: bool = False,
-        upload_path: str | None = None, only: list[str] | None = None,
-    ) -> dict[str, Any]:
-        """Run every compatible module concurrently and build the graph.
+    async def run(self, modules: list[BaseModule], ctx: RunContext) -> dict:
+        """Run all `modules` for `ctx` and return a merged, JSON-ready payload."""
+        results = await asyncio.gather(*(self._run_one(m, ctx) for m in modules))
 
-        `only` optionally restricts to a subset of module keys.
-        Returns {results: [...], graph: {...}}.
-        """
-        modules = self.registry.for_type(input_type)
-        if only:
-            modules = [m for m in modules if m.key in only]
-
-        ctx = self.ctx_factory()
-        ctx.authorized = authorized
-        ctx.upload_path = upload_path
-        ctx.input_type = input_type
-
-        # Fire them all off at once; gather preserves order.
-        results = await asyncio.gather(
-            *(self._run_one(m, value, ctx) for m in modules)
-        )
-
-        # Build the correlation graph by merging every module's contribution.
         graph = EntityGraph()
-        for res in results:
-            graph.ingest(res.nodes, res.edges)
-            # Tie each module's headline finding to its primary node(s).
-            for node in res.nodes:
-                summary = (
-                    res.findings[0].get("summary")
-                    if res.findings and isinstance(res.findings[0], dict)
-                    else None
-                )
-                if summary:
-                    graph.attach_finding(node.id, res.module, summary)
+        out: list[dict] = []
+        for r in results:
+            pre = r.__dict__.get("_predumped")
+            d = pre if pre is not None else r.to_dict()
+            out.append(d)
+            # Rehydrate nodes/edges for the graph merge.
+            if pre is not None:
+                from .base import GraphNode, GraphEdge
+                nodes = [GraphNode(**n_) for n_ in _clean_nodes(pre.get("nodes", []))]
+                edges = [GraphEdge(**e_) for e_ in pre.get("edges", [])]
+            else:
+                nodes, edges = r.nodes, r.edges
+            graph.ingest(nodes, edges)
 
+        ok = sum(1 for d in out if d["ok"])
         return {
-            "value": value,
-            "input_type": input_type.value,
-            "results": [r.to_dict() for r in results],
+            "target": ctx.target,
+            "input_type": ctx.input_type.value,
+            "modules": out,
             "graph": graph.to_dict(),
+            "stats": {"total": len(out), "ok": ok, "failed": len(out) - ok,
+                      "nodes": graph.size[0], "edges": graph.size[1]},
         }
+
+
+def _clean_nodes(raw: list[dict]) -> list[dict]:
+    """Drop derived keys (id/degree) before reconstructing a GraphNode."""
+    out = []
+    for n in raw:
+        out.append({k: v for k, v in n.items() if k in ("type", "value", "label", "meta")})
+    return out

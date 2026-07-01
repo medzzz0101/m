@@ -1,261 +1,192 @@
-"""
-app/main.py
-===========
-The HTTP surface. FastAPI app that:
-  * serves the PWA (index.html + static assets + manifest + service worker),
-  * exposes a small JSON API the frontend calls,
-  * owns the shared singletons (httpx client, cache, registry, orchestrator).
+"""main.py — the FastAPI application that wires the engine to the web console.
 
-Architecture recap (top-down):
-    browser (PWA)  ->  FastAPI routes (here)  ->  Orchestrator
-                                                    -> Registry (modules)
-                                                    -> EntityGraph (correlation)
-Each module is independent and self-describing; this file just wires the shared
-plumbing and translates HTTP <-> engine calls.
+Endpoints (all JSON unless noted):
+  GET  /                     → the single-page console (index.html)
+  GET  /api/health           → liveness + module count
+  GET  /api/modules          → module manifests + tier metadata
+  GET  /api/detect?q=        → classify a target string
+  POST /api/run              → run all applicable modules for a target
+  POST /api/run_module       → run one module by id
+  POST /api/upload           → accept an image, return a token to run image modules
+  POST /api/pay/create       → create a crypto/PayPal invoice for a plan
+  GET  /api/pay/verify       → poll an invoice's on-chain status
+  GET  /sw.js, /manifest.webmanifest, /static/*  → PWA assets
 """
-
 from __future__ import annotations
 
 import os
+import time
 import uuid
 from pathlib import Path
 
-import httpx
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.core.base import RunContext
-from app.core.cache import DiskCache
-from app.core.detect import detect, TYPE_LABELS
-from app.core.orchestrator import HostRateLimiter, Orchestrator
-from app.core.registry import Registry
+from . import __appname__, __version__, config, payments
+from .core.base import InputType, RunContext
+from .core.cache import DiskCache
+from .core.detect import detect, TYPE_LABELS
+from .core.orchestrator import Orchestrator
+from .core.registry import Registry
+from .core.net import close_client
 
-# --- Paths -----------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent.parent
-WEB_DIR = BASE_DIR / "web"
-DATA_DIR = BASE_DIR / "data"
-CACHE_DIR = DATA_DIR / "cache"
-UPLOAD_DIR = DATA_DIR / "uploads"
-for d in (CACHE_DIR, UPLOAD_DIR):
-    d.mkdir(parents=True, exist_ok=True)
+BASE = Path(__file__).resolve().parent.parent
+WEB = BASE / "web"
+DATA = BASE / "data"
+UPLOADS = DATA / "uploads"
+UPLOADS.mkdir(parents=True, exist_ok=True)
 
-# --- Load .env (tiny parser; avoids an extra dependency) -------------------
-def _load_env() -> dict[str, str]:
-    cfg = dict(os.environ)
-    env_file = BASE_DIR / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                cfg.setdefault(k.strip(), v.strip())
-    return cfg
+# --- Singletons, created once at import -------------------------------------
+registry = Registry()
+registry.discover()
+cache = DiskCache(DATA / "cache")
+orchestrator = Orchestrator(cache)
 
+app = FastAPI(title=f"{__appname__} — public-signal correlation console",
+              version=__version__)
 
-CONFIG = _load_env()
-
-# --- Shared singletons -----------------------------------------------------
-# One async HTTP client for the whole app (connection pooling = speed +
-# politeness). Sensible timeouts so no single call hangs the event loop.
-HTTP = httpx.AsyncClient(
-    timeout=httpx.Timeout(12.0, connect=6.0),
-    follow_redirects=False,
-    headers={"User-Agent": "osint-correlation-engine/1.0"},
-    limits=httpx.Limits(max_connections=40, max_keepalive_connections=20),
-)
-CACHE = DiskCache(CACHE_DIR, default_ttl=3600)
-RATE = HostRateLimiter(per_host=4)
-REGISTRY = Registry().discover("app.modules")
-
-# --- Subscription tiers -----------------------------------------------------
-# A product-style tiering: each plan unlocks progressively more (and more
-# powerful) modules. Ordered from lowest to highest. Any module not listed
-# defaults to "elite". This is organisational gating, not a security boundary.
-TIER_ORDER = ["base", "premium", "elite", "mega", "ultra", "master"]
-TIER_MAP = {
-    # Base — the everyday essentials.
-    "base": ["dns_full", "whois", "ip_geo", "http_probe", "username",
-             "wayback", "geo_checklist", "exif_gps"],
-    # Premium — solid recon + first identity/blockchain/image depth.
-    "premium": ["subdomains", "asn", "security_headers", "tls_certs",
-                "http_methods", "telegram", "image_meta", "btc_explorer",
-                "email_exposure", "google_dorks", "cidr_calc", "decoder",
-                "hash_identify", "url_unshorten"],
-    # Elite — full fingerprinting + more social + more forensics.
-    "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
-              "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
-              "image_phash", "sun_calc", "phone_info", "hsts_preload", "mac_lookup",
-              "ens_resolve", "dns_hostsearch", "caa_check"],
-    # Mega — passive exposure, CVEs, scoring, deep social.
-    "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
-             "subdomain_brute", "threat_feeds", "tiktok", "discord",
-             "telegram_channel", "github_user", "steam", "greynoise",
-             "jwt_decoder", "email_headers", "tor_exit", "keybase",
-             "bluesky", "mastodon", "spamhaus_drop", "ripestat", "sslbl"],
-    # Ultra — heavy attack-surface + advanced blockchain/forensics.
-    "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
-              "web_screenshot", "typosquat", "image_ela", "btc_trace",
-              "urlscan", "file_forensics", "doc_metadata", "zone_transfer"],
-    # Master — everything, including the one ACTIVE module.
-    "master": ["port_services"],
-}
-_KEY_TO_TIER = {k: tier for tier, keys in TIER_MAP.items() for k in keys}
-for _m in REGISTRY.all():
-    _m.tier = _KEY_TO_TIER.get(_m.key, "elite")
-
-
-def _ctx_factory() -> RunContext:
-    """Fresh RunContext per run, sharing the long-lived services."""
-    return RunContext(
-        http=HTTP, cache=CACHE, config=CONFIG,
-        extra={"rate_limiter": RATE},
-    )
-
-
-ORCH = Orchestrator(REGISTRY, _ctx_factory)
-
-# --- FastAPI app -----------------------------------------------------------
-app = FastAPI(title="OSINT Correlation Engine", docs_url="/api/docs")
+# In-memory map of upload token → file path (fine for a self-hosted console).
+_uploads: dict[str, str] = {}
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "modules": len(REGISTRY.modules)}
+    return {"app": __appname__, "version": __version__, "status": "ok",
+            "modules": len(registry), "payments_live": config.PAYMENTS_LIVE}
 
 
 @app.get("/api/modules")
 async def modules():
-    """The module catalog — powers the sidebar/registry in the UI."""
-    return {"modules": REGISTRY.manifest(), "tiers": TIER_ORDER}
+    return {"modules": registry.manifests(),
+            "tiers": [{"id": t, **config.TIER_META[t]} for t in config.TIER_ORDER]}
 
 
 @app.get("/api/detect")
-async def detect_type(value: str):
-    """Tell the UI what an input looks like, and which modules apply."""
-    itype = detect(value)
-    compatible = [m.key for m in REGISTRY.for_type(itype)]
-    return {
-        "value": value,
-        "input_type": itype.value,
-        "label": TYPE_LABELS.get(itype, itype.value),
-        "compatible_modules": compatible,
-    }
+async def detect_endpoint(q: str = ""):
+    it = detect(q)
+    applicable = [m.id for m in registry.for_input(it)]
+    return {"input_type": it.value, "label": TYPE_LABELS.get(it, "—"),
+            "applicable": applicable}
 
 
-# --- Checkout / payments ----------------------------------------------------
-# Illustrative monthly prices (EUR) per plan.
-PLAN_PRICES = {"base": 0, "premium": 9, "elite": 19, "mega": 39,
-               "ultra": 79, "master": 149}
-
-
-@app.post("/api/checkout")
-async def checkout(payload: dict):
-    """Start a subscription checkout for a plan.
-
-    * Free plan -> nothing to pay.
-    * If STRIPE_SECRET_KEY is set in .env -> create a real Stripe Checkout
-      Session (card data is handled ENTIRELY by Stripe's hosted page; it never
-      touches this server) and return its URL to redirect to.
-    * Otherwise -> return {demo: true} so the UI runs a safe simulated checkout.
-    """
-    plan = (payload.get("plan") or "").lower()
-    price = PLAN_PRICES.get(plan)
-    if price is None:
-        raise HTTPException(400, "Unknown plan.")
-    if price == 0:
-        return {"free": True, "plan": plan}
-
-    key = CONFIG.get("STRIPE_SECRET_KEY", "").strip()
-    if not key:
-        return {"demo": True, "plan": plan, "price": price}
-
-    origin = (payload.get("origin") or "").rstrip("/")
-    data = {
-        "mode": "subscription",
-        "success_url": f"{origin}/?checkout=success&plan={plan}",
-        "cancel_url": f"{origin}/?checkout=cancel",
-        "line_items[0][quantity]": "1",
-        "line_items[0][price_data][currency]": "eur",
-        "line_items[0][price_data][unit_amount]": str(price * 100),
-        "line_items[0][price_data][recurring][interval]": "month",
-        "line_items[0][price_data][product_data][name]": f"OSINT Engine — {plan} plan",
-    }
-    try:
-        resp = await HTTP.post("https://api.stripe.com/v1/checkout/sessions",
-                               data=data, auth=(key, ""))
-        j = resp.json()
-        if resp.status_code >= 400:
-            return {"error": j.get("error", {}).get("message", "Stripe error")}
-        return {"url": j.get("url"), "id": j.get("id")}
-    except Exception as exc:  # noqa: BLE001
-        return {"error": f"checkout failed: {exc}"}
+def _allowed(module, plan: str) -> bool:
+    return config.tier_index(module.tier) <= config.tier_index(plan)
 
 
 @app.post("/api/run")
-async def run_all(payload: dict):
-    """Run every compatible module for a value and return results + graph.
+async def run(request: Request):
+    body = await request.json()
+    target = (body.get("target") or "").strip()
+    plan = body.get("plan", "base")
+    deep = bool(body.get("deep", False))
+    authorized = bool(body.get("authorized", False))
+    upload_token = body.get("upload")
 
-    Body: {value, authorized?, only?:[keys]}
-    """
-    value = (payload.get("value") or "").strip()
-    if not value:
-        raise HTTPException(400, "Missing 'value'.")
-    itype = detect(value)
-    out = await ORCH.run_all(
-        value, itype,
-        authorized=bool(payload.get("authorized")),
-        only=payload.get("only"),
-    )
-    return out
+    if upload_token:
+        it = InputType.IMAGE
+        path = _uploads.get(upload_token)
+        target = target or "uploaded image"
+    else:
+        it = detect(target)
+        path = None
+    if not target:
+        return JSONResponse({"error": "empty target"}, status_code=400)
+
+    ctx = RunContext(target=target, input_type=it, deep=deep,
+                     authorized=authorized, upload_path=path)
+
+    # Pick applicable modules the user's plan unlocks; skip auth-gated ones
+    # unless the user explicitly confirmed scope.
+    mods = []
+    for m in registry.for_input(it):
+        if not _allowed(m, plan):
+            continue
+        if m.requires_authorized and not authorized:
+            continue
+        mods.append(m)
+
+    result = await orchestrator.run(mods, ctx)
+    result["skipped"] = [m.id for m in registry.for_input(it) if not _allowed(m, plan)]
+    return result
 
 
 @app.post("/api/run_module")
-async def run_module(payload: dict):
-    """Run a single module by key (powers per-card refresh / targeted runs)."""
-    key = payload.get("key")
-    value = (payload.get("value") or "").strip()
-    if not key or not value:
-        raise HTTPException(400, "Need 'key' and 'value'.")
-    itype = detect(value)
-    return await ORCH.run_module(
-        key, value, authorized=bool(payload.get("authorized")),
-        input_type=itype,
-    )
+async def run_module(request: Request):
+    body = await request.json()
+    module_id = body.get("module")
+    target = (body.get("target") or "").strip()
+    plan = body.get("plan", "base")
+    deep = bool(body.get("deep", False))
+    upload_token = body.get("upload")
+
+    m = registry.get(module_id)
+    if not m:
+        return JSONResponse({"error": "unknown module"}, status_code=404)
+    if not _allowed(m, plan):
+        return JSONResponse({"error": "locked", "tier": m.tier}, status_code=402)
+
+    if upload_token:
+        it = InputType.IMAGE
+        path = _uploads.get(upload_token)
+    else:
+        it = detect(target)
+        path = None
+    ctx = RunContext(target=target, input_type=it, deep=deep,
+                     authorized=bool(body.get("authorized")), upload_path=path)
+    result = await orchestrator.run([m], ctx)
+    return result
 
 
 @app.post("/api/upload")
-async def upload(file: UploadFile = File(...), key: str = Form("exif_gps"),
-                 authorized: str = Form("false")):
-    """Accept an image/file, persist it, run the chosen image/forensics module."""
-    suffix = Path(file.filename or "upload").suffix
-    saved = UPLOAD_DIR / f"{uuid.uuid4().hex}{suffix}"
-    saved.write_bytes(await file.read())
-    result = await ORCH.run_module(
-        key, file.filename or saved.name,
-        authorized=authorized.lower() == "true",
-        upload_path=str(saved),
-    )
-    return JSONResponse(result)
+async def upload(file: UploadFile = File(...)):
+    token = uuid.uuid4().hex
+    dest = UPLOADS / f"{token}_{file.filename}"
+    data = await file.read()
+    if len(data) > 25 * 1024 * 1024:
+        return JSONResponse({"error": "file too large (max 25MB)"}, status_code=413)
+    dest.write_bytes(data)
+    _uploads[token] = str(dest)
+    return {"upload": token, "filename": file.filename, "size": len(data)}
 
 
-# --- Static / PWA serving --------------------------------------------------
-# Service worker MUST be served from the root scope to control the whole app.
+# --- Payments ---------------------------------------------------------------
+@app.post("/api/pay/create")
+async def pay_create(request: Request):
+    body = await request.json()
+    plan = body.get("plan", "premium")
+    asset = body.get("asset", "BTC")
+    if plan not in config.TIER_META:
+        return JSONResponse({"error": "unknown plan"}, status_code=400)
+    inv = await payments.create_invoice(plan, asset)
+    return inv
+
+
+@app.get("/api/pay/verify")
+async def pay_verify(invoice: str):
+    return await payments.verify_invoice(invoice)
+
+
+# --- PWA + static -----------------------------------------------------------
 @app.get("/sw.js")
-async def service_worker():
-    return FileResponse(WEB_DIR / "static" / "sw.js", media_type="application/javascript")
+async def sw():
+    return FileResponse(WEB / "sw.js", media_type="application/javascript")
 
 
 @app.get("/manifest.webmanifest")
 async def manifest():
-    return FileResponse(WEB_DIR / "static" / "manifest.webmanifest",
+    return FileResponse(WEB / "manifest.webmanifest",
                         media_type="application/manifest+json")
-
-
-# Mount the static assets (css/js/icons) under /static.
-app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
 
 
 @app.get("/")
 async def index():
-    return FileResponse(WEB_DIR / "index.html")
+    return FileResponse(WEB / "index.html")
+
+
+app.mount("/static", StaticFiles(directory=str(WEB / "static")), name="static")
+
+
+@app.on_event("shutdown")
+async def _shutdown():
+    await close_client()

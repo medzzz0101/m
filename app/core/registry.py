@@ -1,72 +1,48 @@
-"""
-core/registry.py
-================
-Auto-discovery of modules. On startup we import every file in app/modules/,
-find every subclass of BaseModule, instantiate it, and index it by key and by
-the InputTypes it accepts.
+"""registry.py — auto-discover every BaseModule subclass in app/modules/.
 
-Why auto-discover instead of a hand-maintained list? So that adding a new
-capability is literally "drop a new file in app/modules/" — no wiring, no
-registration boilerplate. That is what makes the architecture "genuinely
-modular" as required.
+Drop a new file in `app/modules/` that defines a `BaseModule` subclass and it
+shows up in the API and UI automatically — no central list to maintain. That's
+the payoff of the tiny base vocabulary.
 """
-
 from __future__ import annotations
 
 import importlib
-import inspect
 import pkgutil
 from typing import Iterable
 
+from . import base
 from .base import BaseModule, InputType
 
 
 class Registry:
     def __init__(self) -> None:
-        self.modules: dict[str, BaseModule] = {}            # key -> instance
-        self._by_type: dict[InputType, list[BaseModule]] = {}
+        self._modules: dict[str, BaseModule] = {}
 
-    # ----------------------------------------------------------------------
-    def discover(self, package: str = "app.modules") -> "Registry":
-        """Import the package and register every BaseModule subclass found."""
+    def discover(self, package: str = "app.modules") -> None:
         pkg = importlib.import_module(package)
-        for mod_info in pkgutil.iter_modules(pkg.__path__):
-            if mod_info.name.startswith("_"):
-                continue  # skip private/helper files like _http_utils.py
-            module = importlib.import_module(f"{package}.{mod_info.name}")
-            for _, obj in inspect.getmembers(module, inspect.isclass):
-                # Register concrete subclasses defined IN this module only
-                # (avoids re-registering imported base classes).
-                if (
-                    issubclass(obj, BaseModule)
-                    and obj is not BaseModule
-                    and obj.__module__ == module.__name__
-                    and not inspect.isabstract(obj)
-                ):
-                    self.register(obj())
-        return self
+        for info in pkgutil.iter_modules(pkg.__path__):
+            if info.name.startswith("_"):
+                continue
+            mod = importlib.import_module(f"{package}.{info.name}")
+            for attr in vars(mod).values():
+                if (isinstance(attr, type) and issubclass(attr, BaseModule)
+                        and attr is not BaseModule):
+                    inst = attr()
+                    if not inst.id:
+                        continue
+                    self._modules[inst.id] = inst
 
-    def register(self, instance: BaseModule) -> None:
-        if instance.key in self.modules:
-            raise ValueError(f"Duplicate module key: {instance.key!r}")
-        self.modules[instance.key] = instance
-        for itype in instance.accepts:
-            self._by_type.setdefault(itype, []).append(instance)
+    def all(self) -> list[BaseModule]:
+        return sorted(self._modules.values(), key=lambda m: (m.category.value, m.name))
 
-    # ----------------------------------------------------------------------
-    def for_type(self, itype: InputType) -> list[BaseModule]:
-        """All modules that can handle a given input type."""
-        return list(self._by_type.get(itype, []))
+    def get(self, module_id: str) -> BaseModule | None:
+        return self._modules.get(module_id)
 
-    def get(self, key: str) -> BaseModule | None:
-        return self.modules.get(key)
+    def for_input(self, input_type: InputType) -> list[BaseModule]:
+        return [m for m in self.all() if input_type in m.inputs]
 
-    def all(self) -> Iterable[BaseModule]:
-        return self.modules.values()
+    def manifests(self) -> list[dict]:
+        return [m.manifest() for m in self.all()]
 
-    def manifest(self) -> list[dict]:
-        """Sorted metadata for the whole catalog (powers the sidebar)."""
-        return sorted(
-            (m.manifest() for m in self.modules.values()),
-            key=lambda m: (m["category"], m["name"]),
-        )
+    def __len__(self) -> int:
+        return len(self._modules)
