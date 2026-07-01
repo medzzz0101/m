@@ -967,7 +967,23 @@ function renderCard(res, i) {
     body.append(el("div", { class: "finding" },
       el("div", { class: "finding-summary" }, "No findings.")));
   } else {
-    for (const f of res.findings) body.append(renderFinding(f));
+    // "Data-sheet" layout: simple label→value findings render as a compact grid
+    // of record cells; richer findings (lists, maps, images) render below.
+    const simple = res.findings.filter((f) => f.summary && !f.values && !f.map
+      && !f.image && !f.note && !(f.label || "").startsWith("⚠"));
+    const rich = res.findings.filter((f) => !simple.includes(f));
+    if (simple.length >= 3) {
+      const grid = el("div", { class: "record-grid" });
+      for (const f of simple)
+        grid.append(el("div", { class: "record-cell" },
+          el("div", { class: "record-k" }, f.label || ""),
+          el("div", { class: "record-v mono" + (f.confidence === "high" ? " hot" : "") },
+            f.summary)));
+      body.append(grid);
+      for (const f of rich) body.append(renderFinding(f));
+    } else {
+      for (const f of res.findings) body.append(renderFinding(f));
+    }
   }
   card.append(body);
 
