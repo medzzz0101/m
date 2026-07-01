@@ -137,6 +137,14 @@
             </div>
             <div class="results-actions">
               <button class="btn-ghost" id="view-graph-btn">◇ Graph</button>
+              <div class="report-menu">
+                <button class="btn-ghost" id="report-btn">⤓ Report</button>
+                <div class="report-dropdown" id="report-dropdown" hidden>
+                  <button data-fmt="json">JSON</button>
+                  <button data-fmt="csv">CSV</button>
+                  <button data-fmt="print">Print / PDF</button>
+                </div>
+              </div>
               <button class="btn-ghost" id="new-search-btn">＋ New</button>
             </div>
           </div>
@@ -151,6 +159,18 @@
           </div>
           <div id="graph-canvas" class="graph-canvas">
             <div class="empty-state"><p>Run a target to populate the graph.</p></div>
+          </div>
+          <!-- Node inspector popover (click a node) -->
+          <div class="node-pop" id="node-pop" hidden>
+            <div class="node-pop-head">
+              <span class="node-pop-type mono" id="node-pop-type"></span>
+              <button class="node-pop-close" id="node-pop-close">✕</button>
+            </div>
+            <div class="node-pop-title mono" id="node-pop-title"></div>
+            <div class="node-pop-body" id="node-pop-body"></div>
+            <button class="btn-primary node-pop-expand" id="node-pop-expand" hidden>
+              ⤢ Expand this node
+            </button>
           </div>
         </section>
 

@@ -42,26 +42,51 @@ export class GraphView {
     this._raf = requestAnimationFrame(() => this._tick());
   }
 
-  /** Load a {nodes, edges} payload (from /api/run). */
+  /** Load a {nodes, edges} payload (from /api/run), replacing the graph. */
   setData(graph) {
+    this.nodes = [];
+    this.edges = [];
+    this._byId = new Map();
+    this.mergeData(graph);
+    this._fit();
+  }
+
+  /** MERGE a subgraph into the current one (used by pivot expansion). Existing
+      nodes keep their positions; only genuinely new nodes/edges are added. */
+  mergeData(graph) {
     const W = this.canvas.clientWidth, H = this.canvas.clientHeight;
-    const byId = new Map();
-    this.nodes = graph.nodes.map((n) => {
+    this._byId = this._byId || new Map();
+    let added = 0;
+    for (const n of graph.nodes) {
+      if (this._byId.has(n.id)) {
+        // Refresh findings/degree on an already-placed node.
+        Object.assign(this._byId.get(n.id), {
+          findings: n.findings || this._byId.get(n.id).findings,
+          degree: Math.max(this._byId.get(n.id).degree || 0, n.degree || 0),
+        });
+        continue;
+      }
       const node = {
         ...n,
-        x: W / 2 + (Math.random() - 0.5) * 220,
-        y: H / 2 + (Math.random() - 0.5) * 220,
+        x: W / 2 + (Math.random() - 0.5) * 260,
+        y: H / 2 + (Math.random() - 0.5) * 260,
         vx: 0, vy: 0,
         r: 6 + Math.min(10, (n.degree || 0) * 1.5),
       };
-      byId.set(n.id, node);
-      return node;
-    });
-    // Keep only edges whose endpoints exist.
-    this.edges = graph.edges
-      .filter((e) => byId.has(e.src) && byId.has(e.dst))
-      .map((e) => ({ ...e, a: byId.get(e.src), b: byId.get(e.dst) }));
-    this._fit();
+      this._byId.set(n.id, node);
+      this.nodes.push(node);
+      added++;
+    }
+    const seen = new Set(this.edges.map((e) => `${e.src}|${e.dst}|${e.label}`));
+    for (const e of graph.edges) {
+      const key = `${e.src}|${e.dst}|${e.label}`;
+      if (seen.has(key)) continue;
+      if (this._byId.has(e.src) && this._byId.has(e.dst)) {
+        this.edges.push({ ...e, a: this._byId.get(e.src), b: this._byId.get(e.dst) });
+        seen.add(key);
+      }
+    }
+    return added;
   }
 
   // ---- physics: a simple spring/charge model -----------------------------

@@ -340,6 +340,42 @@ body.has-results .landing-only { display: none !important; }
   position: relative;
 }
 
+/* ---------------- Graph node popover ---------------- */
+.node-pop {
+  position: absolute; right: var(--s4); bottom: var(--s4); z-index: 20;
+  width: min(320px, 78vw); max-height: 60%; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); box-shadow: var(--shadow-pop); padding: var(--s4);
+  animation: cardIn var(--t-fast);
+}
+.node-pop-head { display: flex; align-items: center; justify-content: space-between; }
+.node-pop-type { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--accent); background: var(--accent-soft); padding: 2px 8px;
+  border-radius: var(--r-pill); }
+.node-pop-close { background: none; border: none; color: var(--text-3);
+  cursor: pointer; font-size: 14px; }
+.node-pop-title { font-size: 14px; color: var(--text); margin: var(--s2) 0;
+  word-break: break-all; }
+.node-pop-body { font-size: 12.5px; color: var(--text-2); }
+.node-pop-body .npf { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.node-pop-body .npf b { color: var(--text); font-weight: 600; }
+.node-pop-expand { width: 100%; margin-top: var(--s3); padding: 10px; }
+
+/* ---------------- Report menu ---------------- */
+.report-menu { position: relative; display: inline-block; }
+.report-dropdown {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  background: var(--surface); border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm); box-shadow: var(--shadow-2); overflow: hidden;
+  min-width: 130px;
+}
+.report-dropdown button {
+  display: block; width: 100%; text-align: left; padding: 10px 14px;
+  background: none; border: none; color: var(--text-2); cursor: pointer;
+  font-size: 13px; transition: background var(--t-fast), color var(--t-fast);
+}
+.report-dropdown button:hover { background: var(--accent-soft); color: var(--text); }
+
 /* ---------------- Keyframes ---------------- */
 @keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(0.99); }
   to { opacity: 1; transform: none; } }

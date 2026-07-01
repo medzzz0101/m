@@ -200,6 +200,18 @@ function bindUI() {
   $("#cmdk-trigger").addEventListener("click", openCmdk);
   $("#view-graph-btn").addEventListener("click", openGraph);
   $("#graph-back").addEventListener("click", () => showView("workspace"));
+  $("#node-pop-close").addEventListener("click", () => ($("#node-pop").hidden = true));
+
+  // Report export menu.
+  $("#report-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    $("#report-dropdown").hidden = !$("#report-dropdown").hidden;
+  });
+  $$("#report-dropdown button").forEach((b) =>
+    b.addEventListener("click", () => {
+      $("#report-dropdown").hidden = true; exportReport(b.dataset.fmt);
+    }));
+  document.addEventListener("click", () => ($("#report-dropdown").hidden = true));
 
   // File upload
   $("#file-input").addEventListener("change", onFile);
@@ -249,6 +261,7 @@ async function runTarget() {
   if (!value && !uploadedFile) { toast("Enter a target first"); return; }
 
   // Switch from landing to results mode (hides hero/deck/stats via CSS).
+  pivotDepth = 0;   // reset multi-hop expansion budget for a fresh target
   document.body.classList.add("has-results");
   $("#results-head").hidden = false;
   const grid = $("#results");
@@ -421,17 +434,168 @@ function openGraph() {
   }
   if (!state.graph) state.graph = new GraphView(host);
   state.graph.setData(state.lastRun.graph);
-  state.graph.onNodeClick = (n) => {
-    const fs = (n.findings || []).map((f) => `${f.module}: ${f.summary}`).join("\n");
-    toast(`${n.type} · ${n.label}`);
-    if (fs) setTimeout(() => alertNode(n), 0);
-  };
+  state.graph.onNodeClick = showNodePop;
   const s = state.lastRun.graph.stats;
   $("#graph-stats").textContent = `${s.node_count} nodes · ${s.edge_count} edges`;
+  $("#node-pop").hidden = true;
 }
-function alertNode(n) {
-  const lines = (n.findings || []).map((f) => `• ${f.module}: ${f.summary}`);
-  toast(`${n.label}: ${lines.length} finding(s)`);
+
+// Node types we can pivot on (they map to a runnable input type).
+const PIVOTABLE = new Set(["domain", "subdomain", "ip", "btc_address",
+  "eth_address", "email", "username", "url", "host"]);
+let pivotDepth = 0;
+const PIVOT_MAX = 3;    // depth limit for multi-hop expansion
+
+function showNodePop(n) {
+  const pop = $("#node-pop");
+  pop.hidden = false;
+  $("#node-pop-type").textContent = n.type;
+  $("#node-pop-title").textContent = n.label || n.value;
+  const body = $("#node-pop-body");
+  body.innerHTML = "";
+  const findings = n.findings || [];
+  if (findings.length) {
+    for (const f of findings)
+      body.append(el("div", { class: "npf" },
+        el("b", {}, f.module + ": "), f.summary));
+  } else {
+    // Show a couple of node props if no findings attached.
+    const props = Object.entries(n.props || {}).slice(0, 5);
+    if (props.length) for (const [k, v] of props)
+      body.append(el("div", { class: "npf" }, el("b", {}, k + ": "), String(v)));
+    else body.append(el("div", { class: "npf" }, "No findings recorded for this node."));
+  }
+  const expandBtn = $("#node-pop-expand");
+  const can = PIVOTABLE.has(n.type) && pivotDepth < PIVOT_MAX;
+  expandBtn.hidden = !can;
+  expandBtn.textContent = pivotDepth >= PIVOT_MAX
+    ? `⤢ Max depth (${PIVOT_MAX}) reached`
+    : `⤢ Expand ${n.type} → run its modules`;
+  expandBtn.onclick = () => expandNode(n);
+}
+
+// PIVOT: run all compatible modules on this node's value and MERGE the results
+// into the live graph (multi-hop expansion, depth-limited).
+async function expandNode(n) {
+  const btn = $("#node-pop-expand");
+  btn.disabled = true; btn.textContent = "expanding…";
+  progress(true);
+  try {
+    const out = await api("/api/run", {
+      method: "POST", body: JSON.stringify({ value: n.value }),
+    });
+    const added = state.graph.mergeData(out.graph);
+    pivotDepth++;
+    // Merge into the stored graph too, so Report/JSON reflect the expansion.
+    mergeIntoLastRun(out);
+    const s = state.graph;
+    $("#graph-stats").textContent =
+      `${s.nodes.length} nodes · ${s.edges.length} edges · depth ${pivotDepth}`;
+    toast(`+${added} nodes from ${n.label}`);
+    $("#node-pop").hidden = true;
+  } catch (e) {
+    toast("Expand failed: " + e.message);
+  } finally {
+    btn.disabled = false; progress(false);
+  }
+}
+function mergeIntoLastRun(out) {
+  if (!state.lastRun) { state.lastRun = out; return; }
+  const g = state.lastRun.graph;
+  const ids = new Set(g.nodes.map((x) => x.id));
+  for (const nn of out.graph.nodes) if (!ids.has(nn.id)) g.nodes.push(nn);
+  const ek = new Set(g.edges.map((x) => `${x.src}|${x.dst}|${x.label}`));
+  for (const ee of out.graph.edges)
+    if (!ek.has(`${ee.src}|${ee.dst}|${ee.label}`)) g.edges.push(ee);
+  state.lastRun.results.push(...out.results);
+}
+
+// ------------------------------------------------------------ report --------
+// Build the target profile + findings + evidence log and export it.
+function exportReport(fmt) {
+  if (!state.lastRun) { toast("Run a target first"); return; }
+  const run = state.lastRun;
+  const stamp = new Date().toISOString();
+
+  if (fmt === "json") {
+    const blob = { generated: stamp, target: run.value, input_type: run.input_type,
+      graph: run.graph, results: run.results };
+    download(`osint_${safe(run.value)}.json`,
+      new Blob([JSON.stringify(blob, null, 2)], { type: "application/json" }));
+    toast("JSON report saved");
+    return;
+  }
+
+  if (fmt === "csv") {
+    // Flatten every finding into rows: module, confidence, label, detail, source.
+    const rows = [["module", "confidence", "label", "detail", "source_url"]];
+    for (const r of run.results) {
+      for (const f of (r.findings || [])) {
+        const detail = f.summary ||
+          (Array.isArray(f.values) ? f.values.join(" | ") : "");
+        rows.push([r.module, r.confidence, f.label || "", detail, r.source_url || ""]);
+      }
+      if (r.error) rows.push([r.module, "error", "error", r.error, r.source_url || ""]);
+    }
+    const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+    download(`osint_${safe(run.value)}.csv`,
+      new Blob([csv], { type: "text/csv" }));
+    toast("CSV report saved");
+    return;
+  }
+
+  if (fmt === "print") openPrintReport(run, stamp);
+}
+function csvCell(v) {
+  const s = String(v ?? "").replace(/"/g, '""');
+  return /[",\n]/.test(s) ? `"${s}"` : s;
+}
+function safe(s) { return String(s).replace(/[^a-z0-9.-]/gi, "_").slice(0, 40); }
+function download(name, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = el("a", { href: url, download: name });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+// A print-optimised HTML window → the phone's "Save as PDF".
+function openPrintReport(run, stamp) {
+  const g = run.graph?.stats || {};
+  const esc2 = (s) => String(s ?? "").replace(/[&<>]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+  let html = `<!doctype html><meta charset=utf-8>
+  <title>OSINT report · ${esc2(run.value)}</title>
+  <style>
+    body{font:14px -apple-system,system-ui,sans-serif;color:#111;max-width:760px;
+      margin:32px auto;padding:0 16px}
+    h1{font-size:22px;margin:0 0 4px} .sub{color:#666;font-size:12px;margin-bottom:24px}
+    .card{border:1px solid #ddd;border-radius:8px;padding:14px 16px;margin:0 0 14px}
+    .m{font-weight:700}.c{font-size:10px;text-transform:uppercase;color:#7a5cff}
+    .f{padding:6px 0;border-top:1px solid #eee} .l{font-size:11px;color:#888;
+      text-transform:uppercase;letter-spacing:.05em} .v{font-family:monospace;
+      font-size:12px;color:#333;word-break:break-all}
+    .stat{display:inline-block;margin-right:20px;font-size:13px}
+    @media print{.no-print{display:none}}
+  </style>
+  <h1>OSINT Report — ${esc2(run.value)}</h1>
+  <div class=sub>Type: ${esc2(run.input_type)} · Generated ${esc2(stamp)} ·
+    ${g.node_count || 0} nodes / ${g.edge_count || 0} edges · public-data OSINT</div>
+  <button class=no-print onclick=print()>Save as PDF / Print</button><hr>`;
+  for (const r of run.results) {
+    html += `<div class=card><div><span class=m>${esc2(r.source || r.module)}</span>
+      · <span class=c>${esc2(r.error ? "error" : r.confidence)}</span></div>`;
+    if (r.error) html += `<div class=f>${esc2(r.error)}</div>`;
+    for (const f of (r.findings || [])) {
+      html += `<div class=f><div class=l>${esc2(f.label || "")}</div>`;
+      if (f.summary) html += `<div>${esc2(f.summary)}</div>`;
+      for (const v of (f.values || [])) html += `<div class=v>${esc2(v)}</div>`;
+      html += `</div>`;
+    }
+    if (r.source_url) html += `<div class=f class=v>Source: ${esc2(r.source_url)}</div>`;
+    html += `</div>`;
+  }
+  const w = window.open("", "_blank");
+  if (!w) { toast("Allow pop-ups to print the report"); return; }
+  w.document.write(html); w.document.close();
 }
 
 // ------------------------------------------------------------ command pal ---
