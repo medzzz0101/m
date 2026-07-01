@@ -22,6 +22,16 @@
   <link rel="stylesheet" href="/static/css/components.css" />
 </head>
 <body>
+  <!-- Boot sequence: a one-time "console powering up" intro (skippable) -->
+  <div id="boot" class="boot">
+    <div class="boot-inner">
+      <div class="boot-logo">◈ CORRELATE</div>
+      <div class="boot-sub mono">intelligence console</div>
+      <div id="boot-log" class="boot-log mono"></div>
+    </div>
+    <div class="boot-skip mono">tap to skip</div>
+  </div>
+
   <!-- Top progress bar: animates during a run (driven by app.js) -->
   <div id="progress-bar" class="progress-bar" aria-hidden="true"></div>
 

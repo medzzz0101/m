@@ -342,6 +342,30 @@ body.has-results .landing-only { display: none !important; }
 }
 .results-meta { color: var(--text-3); font-size: 12.5px; }
 
+/* ---------------- Boot sequence ---------------- */
+.boot {
+  position: fixed; inset: 0; z-index: 300; background: #060608;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; transition: opacity .5s; overflow: hidden;
+}
+.boot::after {  /* faint scanlines */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(139,124,255,0.05) 0 1px, transparent 1px 3px);
+}
+.boot-out { opacity: 0; }
+.boot-inner { text-align: center; z-index: 1; }
+.boot-logo { font-size: 30px; font-weight: 800; letter-spacing: 0.1em; color: #fff;
+  text-shadow: 0 0 30px var(--accent-glow); animation: bootPulse 1.4s ease-in-out infinite; }
+.boot-sub { font-size: 11px; letter-spacing: 0.34em; text-transform: uppercase;
+  color: var(--accent); margin-top: 6px; }
+.boot-log { margin-top: var(--s5); text-align: left; font-size: 12.5px;
+  color: var(--good); min-height: 140px; }
+.boot-line { animation: cardIn .18s both; margin: 3px 0; }
+.boot-line:last-child { color: var(--accent); }
+.boot-skip { position: absolute; bottom: 26px; font-size: 10px; color: var(--text-3);
+  letter-spacing: 0.2em; text-transform: uppercase; z-index: 1; }
+@keyframes bootPulse { 0%,100% { opacity: 1; } 50% { opacity: .7; } }
+
 /* ---------------- Bento dashboard ---------------- */
 .dash {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3);

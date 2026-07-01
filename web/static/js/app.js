@@ -100,11 +100,40 @@ const catStyle = (cat) =>
 // ------------------------------------------------------------------ boot ----
 init();
 async function init() {
+  playBoot();
   await loadModules();
   bindUI();
   handleCheckoutReturn();
   registerSW();
   pingHealth();
+}
+
+// One-time "console powering up" intro (per browser session).
+function playBoot() {
+  const boot = $("#boot");
+  if (!boot) return;
+  if (sessionStorage.getItem("booted")) { boot.remove(); return; }
+  sessionStorage.setItem("booted", "1");
+  const log = $("#boot-log");
+  const lines = [
+    "[ok] loading modules ............ 71",
+    "[ok] correlation engine ......... ready",
+    "[ok] entity graph ............... online",
+    "[ok] input detectors ............ 11 types",
+    "[ok] secure channel ............. established",
+    "> ready_",
+  ];
+  const done = () => { boot.classList.add("boot-out");
+    setTimeout(() => boot.remove(), 500); };
+  boot.addEventListener("click", done);
+  let i = 0;
+  const step = () => {
+    if (i >= lines.length) { setTimeout(done, 550); return; }
+    log.append(el("div", { class: "boot-line" }, lines[i]));
+    i++;
+    setTimeout(step, 230);
+  };
+  setTimeout(step, 350);
 }
 
 async function loadModules() {
@@ -754,13 +783,12 @@ function renderDashboard(out) {
   const scoreColor = scoreVal == null ? "var(--text-3)"
     : (+scoreVal >= 75 ? "var(--bad)" : +scoreVal >= 50 ? "var(--warn)"
        : +scoreVal >= 25 ? "var(--info)" : "var(--good)");
+  const bigNum = el("span", {});
   dash.append(tile("t-score", "", el("div", { class: "tile-k" }, "EXPOSURE"),
-    scoreVal != null
-      ? el("div", { class: "tile-big", style: `color:${scoreColor}` }, scoreVal,
-          el("span", { class: "tile-big-sub" }, "/100"))
-      : el("div", { class: "tile-big", style: "color:var(--text-2)" }, highCount,
-          el("span", { class: "tile-big-sub" }, "high")),
+    el("div", { class: "tile-big", style: `color:${scoreColor}` }, bigNum,
+      el("span", { class: "tile-big-sub" }, scoreVal != null ? "/100" : "high")),
     el("div", { class: "tile-meta" }, scoreBand || `${findingCount} findings`)));
+  countUp(bigNum, String(scoreVal != null ? scoreVal : highCount));
 
   // 3) GRAPH tile (opens the graph view).
   const gt = tile("t-graph", "", el("div", { class: "tile-k" }, "GRAPH"),
