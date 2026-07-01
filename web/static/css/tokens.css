@@ -27,6 +27,13 @@
   --accent-line:   rgba(139,124,255,0.40);
   --accent-glow:   rgba(139,124,255,0.30);
 
+  /* --- Per-category accent tints (drive card colour-coding by domain) --- */
+  --cat-infrastructure: #8b7cff;   --cat-infrastructure-soft: rgba(139,124,255,0.13);
+  --cat-blockchain:     #f7a13a;   --cat-blockchain-soft:     rgba(247,161,58,0.13);
+  --cat-image:          #5ad6a0;   --cat-image-soft:          rgba(90,214,160,0.13);
+  --cat-identity:       #e892d0;   --cat-identity-soft:       rgba(232,146,208,0.13);
+  --cat-intel:          #7fb6f0;   --cat-intel-soft:          rgba(127,182,240,0.13);
+
   /* --- Semantic pills (confidence / status). Muted, never neon. --- */
   --good:   #5ad6a0;  --good-soft:   rgba(90,214,160,0.13);
   --warn:   #e8c468;  --warn-soft:   rgba(232,196,104,0.13);

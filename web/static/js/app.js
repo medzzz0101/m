@@ -27,6 +27,10 @@ const CATS = [
   ["intel", "Intel"],
 ];
 
+// Inline style that binds a card's --cat / --cat-soft to its category colour.
+const catStyle = (cat) =>
+  `--cat:var(--cat-${cat});--cat-soft:var(--cat-${cat}-soft)`;
+
 // ------------------------------------------------------------------ boot ----
 init();
 async function init() {
@@ -80,7 +84,9 @@ function renderDeck() {
   for (const [key, title] of CATS) {
     const mods = state.byCat[key];
     if (!mods?.length) continue;
-    deck.append(el("div", { class: "deck-cat-title" }, title));
+    deck.append(el("div", { class: "deck-cat-title", "data-cat": key,
+      style: catStyle(key) }, title, el("span", { class: "deck-cat-count" },
+      ` ${mods.length}`)));
     for (const m of mods) deck.append(deckCard(m));
   }
 }
@@ -90,7 +96,7 @@ function deckCard(m) {
       class: "type-tag" + (m.requires_authorized_target ? " gated" : ""),
     }, a)));
   const card = el("div", {
-    class: "deck-card", title: m.description,
+    class: "deck-card", title: m.description, "data-cat": m.category,
     onclick: () => pickModule(m),
     onmousemove: (e) => {
       const r = card.getBoundingClientRect();
@@ -141,7 +147,7 @@ function renderSidebar() {
 }
 function navItem(m) {
   return el("div", {
-    class: "nav-item", title: m.description,
+    class: "nav-item", title: m.description, "data-cat": m.category,
     onclick: () => quickPick(m),
   },
     el("span", { class: "nav-ico" }, icon(m.key, m.category)),
@@ -338,7 +344,9 @@ function addSkeleton(grid, title) {
 function renderCard(res, i) {
   const m = state.modules.find((x) => x.key === res.module);
   const conf = res.error ? "err" : (res.confidence || "info");
-  const card = el("div", { class: "card", style: `--i:${i}` });
+  const cat = m?.category || "intel";
+  const card = el("div", { class: "card", "data-cat": cat,
+    style: `--i:${i};${catStyle(cat)}` });
 
   // head
   card.append(el("div", { class: "card-head" },
