@@ -152,6 +152,7 @@ async function loadModules() {
     renderSidebar();
     renderTabbar();
     renderStats();
+    renderHomeCats();
     renderDeck();
   } catch (e) {
     toast("Failed to load modules");
@@ -413,6 +414,28 @@ function countUp(node, text) {
     if (p < 1) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+// Home category tiles — one bento tile per investigative domain, with count.
+function renderHomeCats() {
+  const host = $("#home-cats");
+  if (!host) return;
+  host.innerHTML = "";
+  for (const [key, title] of CATS) {
+    const mods = state.byCat[key] || [];
+    if (!mods.length) continue;
+    const unlocked = mods.filter(isUnlocked).length;
+    host.append(el("div", {
+      class: "hc-tile", "data-cat": key, style: catStyle(key),
+      onclick: () => {
+        const first = $(`.deck-card[data-cat="${key}"]`);
+        if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+      },
+    },
+      el("div", { class: "hc-ico" }, icon(mods[0]?.key, key)),
+      el("div", { class: "hc-name" }, title),
+      el("div", { class: "hc-count mono" }, `${unlocked}/${mods.length} modules`)));
+  }
 }
 
 // The capability deck — every module as a tappable card, grouped by category.

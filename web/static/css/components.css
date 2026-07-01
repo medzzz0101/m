@@ -62,7 +62,8 @@
 }
 
 /* ---------------- Hero radar illustration ---------------- */
-.hero-visual { width: 150px; height: 150px; margin: 0 0 var(--s3) -6px; }
+.hero-visual { width: 92px; height: 92px; margin: 0 0 var(--s2) -4px; opacity: 0.9; }
+.hero { display: flex; flex-direction: column; }
 .radar { width: 100%; height: 100%; overflow: visible; }
 .radar-rings line, .radar-rings circle { stroke-width: 1; }
 .radar-sweep { transform-origin: 120px 120px; animation: radarSpin 5s linear infinite; }
@@ -168,6 +169,25 @@
 .chip:active { transform: scale(0.95); }
 .chip-upload { color: var(--accent); border-color: var(--accent-line);
   background: var(--accent-soft); font-weight: 600; }
+
+/* ----- Home category tiles (bento) ----- */
+.home-cats {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3);
+  margin-bottom: var(--s5);
+}
+@media (min-width: 720px) { .home-cats { grid-template-columns: repeat(5, 1fr); } }
+.hc-tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-md); padding: var(--s4); cursor: pointer;
+  transition: border-color var(--t-fast), transform var(--t-fast), background var(--t-fast);
+}
+.hc-tile:hover { border-color: var(--cat, var(--accent-line)); transform: translateY(-2px);
+  background: var(--surface-2); }
+.hc-ico { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+  font-size: 16px; color: var(--cat, var(--accent)); background: var(--cat-soft, var(--surface-3));
+  margin-bottom: var(--s2); }
+.hc-name { font-size: 13.5px; font-weight: 650; color: var(--text); }
+.hc-count { font-size: 10.5px; color: var(--text-3); margin-top: 3px; }
 
 /* ----- Stats strip ----- */
 .stat-strip {
