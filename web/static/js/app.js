@@ -30,6 +30,16 @@ const CAT_META = {
 };
 const CAT_ORDER = ["social", "identity", "infrastructure", "image", "intel"];
 
+// Small inline icons per category (stroke inherits the category colour).
+const CAT_ICON = {
+  social: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>`,
+  identity: `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+  infrastructure: `<rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 6h.01M6 18h.01"/>`,
+  image: `<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>`,
+  intel: `<circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/>`,
+};
+const catSvg = (cat) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${CAT_ICON[cat] || ""}</svg>`;
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -158,6 +168,10 @@ function commandBar() {
       <button class="chip" id="chip-deep"><span class="toggle-knob"></span> Deep scan</button>
       <button class="chip" id="chip-upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3M7 8l5-5 5 5M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg> Upload image</button>
       <button class="chip" id="chip-pw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Check my password</button>
+    </div>
+    <div class="examples">
+      <span class="ex-label">try</span>
+      ${["octocat", "github.com", "1.1.1.1", "someone@example.com"].map((e) => `<button class="ex" data-ex="${esc(e)}">${esc(e)}</button>`).join("")}
     </div>`;
   return wrap;
 }
@@ -171,8 +185,25 @@ function statStrip() {
     [state.tiers.length, "Plans"],
     ["100%", "Public data"],
   ];
-  s.innerHTML = cells.map(([n, l]) => `<div class="stat"><div class="stat-n">${n}</div><div class="stat-l">${l}</div></div>`).join("");
+  s.innerHTML = cells.map(([n, l]) => {
+    const num = typeof n === "number";
+    return `<div class="stat"><div class="stat-n" ${num ? `data-count="${n}"` : ""}>${num ? "0" : n}</div><div class="stat-l">${l}</div></div>`;
+  }).join("");
+  requestAnimationFrame(() => $$(".stat-n[data-count]", s).forEach(countUp));
   return s;
+}
+
+// Animate a number from 0 to its data-count over ~600ms.
+function countUp(node) {
+  const target = parseInt(node.dataset.count, 10);
+  const start = performance.now(), dur = 650;
+  function tick(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    node.textContent = Math.round(target * eased);
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function moduleTile(mod) {
@@ -181,6 +212,7 @@ function moduleTile(mod) {
   const locked = tierIndex(mod.tier) > tierIndex(state.plan);
   t.innerHTML = `
     <div class="mod-top">
+      <span class="mod-ico" style="color:${CAT_META[mod.category].color}">${catSvg(mod.category)}</span>
       <span class="mod-name">${esc(mod.name)}</span>
       <span class="mod-tier ${locked ? "locked" : ""}">${locked ? "🔒 " : ""}${mod.tier}</span>
     </div>
@@ -221,6 +253,11 @@ function bindCommandBar() {
   };
   $("#chip-upload").onclick = () => $("#file-input").click();
   $("#chip-pw").onclick = openPwCheck;
+  $$(".ex").forEach((b) => b.onclick = () => {
+    inp.value = b.dataset.ex;
+    inp.dispatchEvent(new Event("input"));
+    runAll();
+  });
 }
 
 // ---------------------------------------------------------------- RUN

@@ -43,6 +43,14 @@
 .chip.on .toggle-knob { background:var(--accent); }
 .chip.on .toggle-knob::after { transform:translateX(13px); background:#fff; }
 
+/* ---- Example chips ---- */
+.examples { display:flex; align-items:center; gap:var(--s2); margin-top:var(--s3); flex-wrap:wrap; position:relative; }
+.ex-label { font-size:10px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+.ex { font-size:12px; font-family:var(--mono); padding:5px 11px; border-radius:var(--pill);
+  background:var(--bg); border:1px dashed var(--line-strong); color:var(--text-2); cursor:pointer;
+  transition:all var(--t-fast); }
+.ex:hover { border-style:solid; border-color:var(--accent-line); color:var(--accent-2); }
+
 /* ---- Stat strip ---- */
 .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s3); margin-top:var(--s5); }
 .stat { background:var(--surface); border:1px solid var(--line); border-radius:var(--r2); padding:var(--s4); }
@@ -63,6 +71,8 @@
 .mod::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--cat); opacity:.7; }
 .mod:hover { transform:translateY(-2px); border-color:var(--line-strong); background:var(--surface-2); }
 .mod-top { display:flex; align-items:center; gap:var(--s2); margin-bottom:6px; }
+.mod-ico { width:18px; height:18px; flex:0 0 18px; display:grid; place-items:center; }
+.mod-ico svg { width:18px; height:18px; }
 .mod-name { font-size:14px; font-weight:600; flex:1; }
 .mod-tier { font-size:9.5px; font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;
   padding:2px 7px; border-radius:var(--pill); border:1px solid var(--line); color:var(--text-3); }
