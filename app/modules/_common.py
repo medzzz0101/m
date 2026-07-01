@@ -7,10 +7,30 @@ auto-discovery walk skips it (it holds no modules of its own).
 
 from __future__ import annotations
 
+import asyncio
+import socket
 from urllib.parse import urlparse
 from typing import Any
 
 import httpx
+
+
+async def resolve_ip(host: str) -> str | None:
+    """Resolve a hostname to its first IPv4 address (off the event loop).
+    Returns the input unchanged if it already looks like an IP."""
+    # Quick check: already an IP?
+    try:
+        socket.inet_aton(host)
+        return host
+    except OSError:
+        pass
+    try:
+        loop = asyncio.get_running_loop()
+        infos = await loop.run_in_executor(
+            None, lambda: socket.getaddrinfo(host, None, socket.AF_INET))
+        return infos[0][4][0] if infos else None
+    except Exception:
+        return None
 
 
 def host_of(url: str) -> str:

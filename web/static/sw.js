@@ -14,7 +14,7 @@
 
 // Bump this whenever shell assets change — it invalidates old caches so phones
 // pick up the new UI instead of a stale one.
-const CACHE_VERSION = "osint-shell-v2";
+const CACHE_VERSION = "osint-shell-v3";
 const SHELL = [
   "/",
   "/static/css/tokens.css",
@@ -49,23 +49,23 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Never cache API or cross-origin data calls — always live.
+  // Never touch API or cross-origin data calls — always live, no caching.
   if (url.pathname.startsWith("/api/") || url.origin !== self.location.origin) {
     return; // default network behaviour
   }
 
-  // Shell + static assets: cache-first, fall back to network, then update cache.
+  // NETWORK-FIRST for the shell. When online we always render the freshest UI
+  // (this avoids the "stale/half-styled cached page" trap that a cache-first
+  // worker can fall into if it ever caches a bad response). The cache is only a
+  // fallback for offline. We also refuse to cache anything that isn't a clean
+  // 200 same-type response, so a proxy interstitial can never poison the cache.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request).then((resp) => {
-        // Stash a copy of successful GETs for next time (offline shell).
-        if (resp.ok && event.request.method === "GET") {
-          const copy = resp.clone();
-          caches.open(CACHE_VERSION).then((c) => c.put(event.request, copy));
-        }
-        return resp;
-      }).catch(() => cached);
-      return cached || network;
-    })
+    fetch(event.request).then((resp) => {
+      if (resp.ok && resp.type === "basic" && event.request.method === "GET") {
+        const copy = resp.clone();
+        caches.open(CACHE_VERSION).then((c) => c.put(event.request, copy));
+      }
+      return resp;
+    }).catch(() => caches.match(event.request))
   );
 });
