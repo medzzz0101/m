@@ -162,7 +162,9 @@ class EmailExposureModule(BaseModule):
         except Exception as exc:  # noqa: BLE001
             findings.append({"label": "Domain breaches", "summary": f"lookup failed: {exc}"})
 
-        # 3. Optional: breaches for THIS address (own/authorized) — needs a key.
+        # 3. Optional EXTRA source: if an HIBP key is configured, add its official
+        #    per-address result too. Without a key we already checked the address
+        #    above via the free sources, so we DON'T nag — we just note it quietly.
         key = ctx.config.get("HIBP_API_KEY", "").strip()
         if key:
             try:
@@ -174,20 +176,15 @@ class EmailExposureModule(BaseModule):
                 if acct.status_code == 200:
                     data = acct.json()
                     findings.append({
-                        "label": "This address in breaches",
+                        "label": "HIBP (official) breaches",
                         "summary": f"{len(data)} breach(es)",
                         "values": [b.get("Title") for b in data],
                         "confidence": "high"})
                 elif acct.status_code == 404:
-                    findings.append({"label": "This address in breaches",
-                                     "summary": "not found — good news"})
+                    findings.append({"label": "HIBP (official)",
+                                     "summary": "not found in HaveIBeenPwned."})
             except Exception:
                 pass
-        else:
-            findings.append({"label": "Per-address check",
-                             "summary": "add HIBP_API_KEY to .env to check this "
-                                        "specific (own/authorized) address.",
-                             "confidence": "info"})
 
         nodes = [GraphNode("email", email, props={"domain": domain}),
                  GraphNode("domain", domain)]
