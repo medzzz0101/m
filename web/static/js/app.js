@@ -705,6 +705,7 @@ async function runTarget() {
     const g = out.graph?.stats;
     if (g) $("#results-summary").textContent =
       `${det.label} · ${out.results.length} modules · ${g.node_count} nodes / ${g.edge_count} edges`;
+    renderDashboard(out);
     setupResultsToolbar(out.results);
     autoDeepScan(out);   // power feature: auto-expand the graph (plan-gated)
   } catch (e) {
@@ -712,6 +713,102 @@ async function runTarget() {
   } finally {
     progress(false);
   }
+}
+
+// ------------------------------------------------------------ bento dashboard --
+// Build the summary tiles (target · score · alerts · graph) shown above the
+// per-module result tiles — the SOC-style at-a-glance dashboard.
+function renderDashboard(out) {
+  const dash = $("#dash");
+  dash.hidden = false;
+  dash.innerHTML = "";
+  const g = out.graph?.stats || {};
+  const results = out.results || [];
+
+  // Collect cross-module alerts (⚠ findings) and high-confidence hits.
+  const alerts = [];
+  let highCount = 0, findingCount = 0;
+  let scoreVal = null, scoreBand = null;
+  for (const r of results) {
+    if (r.confidence === "high" && !r.error) highCount++;
+    for (const f of (r.findings || [])) {
+      findingCount++;
+      if (typeof f.label === "string" && f.label.trim().startsWith("⚠"))
+        alerts.push({ module: r.module, text: f.summary || (f.values || []).join(", ") });
+    }
+    if (r.module === "exposure_score" && r.findings?.[0]) {
+      const m = String(r.findings[0].summary || "").match(/(\d+)\s*\/\s*100\s*·\s*(\w+)/);
+      if (m) { scoreVal = m[1]; scoreBand = m[2]; }
+    }
+  }
+
+  // 1) TARGET tile (wide).
+  dash.append(tile("t-target", "wide",
+    el("div", { class: "tile-k" }, "TARGET"),
+    el("div", { class: "tile-target mono" }, out.value),
+    el("div", { class: "tile-meta" },
+      pillMini(out.input_type), ` ${results.length} modules · `,
+      `${g.node_count || 0} nodes / ${g.edge_count || 0} edges`)));
+
+  // 2) SCORE tile.
+  const scoreColor = scoreVal == null ? "var(--text-3)"
+    : (+scoreVal >= 75 ? "var(--bad)" : +scoreVal >= 50 ? "var(--warn)"
+       : +scoreVal >= 25 ? "var(--info)" : "var(--good)");
+  dash.append(tile("t-score", "", el("div", { class: "tile-k" }, "EXPOSURE"),
+    scoreVal != null
+      ? el("div", { class: "tile-big", style: `color:${scoreColor}` }, scoreVal,
+          el("span", { class: "tile-big-sub" }, "/100"))
+      : el("div", { class: "tile-big", style: "color:var(--text-2)" }, highCount,
+          el("span", { class: "tile-big-sub" }, "high")),
+    el("div", { class: "tile-meta" }, scoreBand || `${findingCount} findings`)));
+
+  // 3) GRAPH tile (opens the graph view).
+  const gt = tile("t-graph", "", el("div", { class: "tile-k" }, "GRAPH"),
+    el("div", { class: "tile-graphviz", id: "tile-graphviz" }),
+    el("div", { class: "tile-meta" }, `${g.node_count || 0} nodes · tap to open`));
+  gt.classList.add("clickable");
+  gt.addEventListener("click", openGraph);
+  dash.append(gt);
+  drawMiniGraph($("#tile-graphviz"), out.graph);
+
+  // 4) ALERTS tile (wide) — only if there are any.
+  if (alerts.length) {
+    dash.append(tile("t-alerts", "wide alert",
+      el("div", { class: "tile-k" }, `⚠ ALERTS · ${alerts.length}`),
+      el("div", { class: "tile-alerts" },
+        ...alerts.slice(0, 6).map((a) =>
+          el("div", { class: "tile-alert-row" },
+            el("span", { class: "ta-mod mono" }, a.module), a.text)))));
+  }
+}
+
+function tile(id, cls, ...kids) {
+  return el("div", { class: `tile ${cls}`, id }, ...kids);
+}
+function pillMini(t) { return el("span", { class: "pill-mini" }, t); }
+
+// A tiny static node-scatter preview of the graph (colour = node type).
+function drawMiniGraph(host, graph) {
+  if (!host || !graph) return;
+  const css = getComputedStyle(document.documentElement);
+  const nodes = (graph.nodes || []).slice(0, 60);
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 60");
+  svg.style.cssText = "width:100%;height:100%";
+  nodes.forEach((n, i) => {
+    const c = document.createElementNS(svgNS, "circle");
+    const a = (i / nodes.length) * Math.PI * 2 * 3;
+    const rad = 6 + (i % 5) * 5;
+    c.setAttribute("cx", 50 + Math.cos(a) * rad);
+    c.setAttribute("cy", 30 + Math.sin(a) * rad * 0.55);
+    c.setAttribute("r", 1.3 + Math.min(2, (n.degree || 0) * 0.3));
+    c.setAttribute("fill", css.getPropertyValue(`--n-${n.type}`).trim() ||
+      css.getPropertyValue("--n-default").trim());
+    svg.appendChild(c);
+  });
+  host.innerHTML = "";
+  host.appendChild(svg);
 }
 
 // ------------------------------------------------------------ result filters --
@@ -785,7 +882,11 @@ function renderCard(res, i) {
   const searchText = [m?.name || res.module,
     ...(res.findings || []).flatMap((f) => [f.label, f.summary,
       ...(f.values || [])])].join(" ").toLowerCase();
-  const card = el("div", { class: "card", "data-cat": cat, "data-conf": conf,
+  // Rich cards (maps, images, or many values) get a wider bento tile.
+  const rich = (res.findings || []).some((f) => f.map || f.image ||
+    (Array.isArray(f.values) && f.values.length > 6));
+  const card = el("div", { class: "card" + (rich ? " span2" : ""),
+    "data-cat": cat, "data-conf": conf,
     "data-empty": isEmpty ? "1" : "0", "data-search": searchText,
     style: `--i:${i};${catStyle(cat)}` });
 
@@ -1205,6 +1306,8 @@ function resetToLanding() {
   $("#results").innerHTML = "";
   $("#results-head").hidden = true;
   $("#results-toolbar").hidden = true;
+  $("#dash").hidden = true;
+  $("#dash").innerHTML = "";
   $("#target-input").value = "";
   $("#clear-btn").hidden = true;
   $("#type-pill").textContent = "auto";

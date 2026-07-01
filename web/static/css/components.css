@@ -342,6 +342,39 @@ body.has-results .landing-only { display: none !important; }
 }
 .results-meta { color: var(--text-3); font-size: 12.5px; }
 
+/* ---------------- Bento dashboard ---------------- */
+.dash {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3);
+  margin: var(--s4) 0;
+}
+@media (min-width: 720px) { .dash { grid-template-columns: repeat(4, 1fr); } }
+.tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--s4); position: relative;
+  overflow: hidden; animation: cardIn var(--t-med) both;
+}
+.tile.wide { grid-column: span 2; }
+.tile.clickable { cursor: pointer; transition: border-color var(--t-fast), transform var(--t-fast); }
+.tile.clickable:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.tile.alert { border-color: rgba(240,138,138,0.35); background:
+  linear-gradient(180deg, var(--bad-soft), var(--surface)); }
+.tile-k { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-3); margin-bottom: var(--s2); }
+.tile-target { font-size: 20px; font-weight: 700; color: #fff; word-break: break-all;
+  line-height: 1.1; }
+.tile-meta { font-size: 11px; color: var(--text-3); margin-top: var(--s2);
+  font-family: var(--font-mono); }
+.pill-mini { display: inline-block; font-size: 10px; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--accent-line);
+  padding: 1px 7px; border-radius: var(--r-pill); }
+.tile-big { font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.tile-big-sub { font-size: 14px; color: var(--text-3); font-weight: 600; margin-left: 4px; }
+.tile-graphviz { height: 62px; margin: 4px 0; }
+.tile-alerts { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.tile-alert-row { font-size: 12px; color: var(--text); display: flex; gap: 8px;
+  align-items: baseline; }
+.ta-mod { font-size: 10px; color: var(--bad); flex: 0 0 auto; }
+
 /* ---------------- Results toolbar (filter/search) ---------------- */
 .results-toolbar {
   display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap;
@@ -377,9 +410,11 @@ body.has-results .landing-only { display: none !important; }
 
 /* ---------------- Results grid + cards ---------------- */
 .results-grid {
-  display: grid; gap: var(--s4);
-  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  display: grid; gap: var(--s3); grid-auto-flow: dense;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
+/* Rich cards (maps, images, long lists) span two columns in the bento grid. */
+@media (min-width: 720px) { .card.span2 { grid-column: span 2; } }
 .card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-lg); overflow: hidden;
