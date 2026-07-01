@@ -217,28 +217,20 @@ class SslLabsGrade(BaseModule):
             "TLS 1.1": ssl.TLSVersion.TLSv1_1,
             "TLS 1.0": ssl.TLSVersion.TLSv1,
         }
-        loop = asyncio.get_event_loop()
+        from ..core.net import tls_supports
         # Sequential handshakes (parallel TLS is flaky behind some proxies).
+        any_ok = False
         for name, ver in versions.items():
-            ok = await loop.run_in_executor(None, self._try, host, ver)
+            ok = await asyncio.to_thread(tls_supports, host, ver, ver)
+            any_ok = any_ok or ok
             weak = name in ("TLS 1.0", "TLS 1.1")
             res.add(name, "accepted" if ok else "rejected",
                     (Confidence.POSSIBLE if weak and ok else Confidence.CONFIRMED))
-        res.summary = f"TLS version probe for {host}"
+        if not any_ok:
+            res.summary = f"No TLS handshake to {host}:443 (unreachable from here)"
+        else:
+            res.summary = f"TLS version probe for {host}"
         return res
-
-    @staticmethod
-    def _try(host, ver):
-        import ssl, socket
-        try:
-            c = ssl.create_default_context()
-            c.check_hostname = False; c.verify_mode = ssl.CERT_NONE
-            c.minimum_version = ver; c.maximum_version = ver
-            with socket.create_connection((host, 443), timeout=6) as s:
-                with c.wrap_socket(s, server_hostname=host):
-                    return True
-        except Exception:
-            return False
 
 
 class CryptoWallet(BaseModule):

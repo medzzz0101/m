@@ -154,6 +154,12 @@ class GithubProfile(BaseModule):
             res.ok = False; res.error = str(e); return res
         if r.status_code == 404:
             res.summary = "No public GitHub user with that handle"; return res
+        if r.status_code in (403, 429):
+            # Shared-host rate limit — not a real failure. Degrade gracefully.
+            res.add("GitHub API", "rate-limited on this host — try again shortly",
+                    Confidence.INFO, link=f"https://github.com/{user}")
+            res.summary = "GitHub API rate-limited (public profile still at the link)"
+            return res
         if r.status_code != 200:
             res.ok = False; res.error = f"GitHub API HTTP {r.status_code}"; return res
         d = r.json()

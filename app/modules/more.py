@@ -35,9 +35,17 @@ class GithubRepos(BaseModule):
                 params={"sort": "pushed", "per_page": 30})
         except Exception as e:
             res.ok = False; res.error = str(e); return res
+        if r.status_code in (403, 429):
+            res.add("GitHub API", "rate-limited on this host — try again shortly",
+                    Confidence.INFO, link=f"https://github.com/{user}?tab=repositories")
+            res.summary = "GitHub API rate-limited"
+            return res
         if r.status_code != 200:
             res.summary = "No public repositories"; return res
-        repos = sorted(r.json(), key=lambda x: x.get("stargazers_count", 0), reverse=True)
+        data = r.json()
+        if not isinstance(data, list):
+            res.summary = "No public repositories"; return res
+        repos = sorted(data, key=lambda x: x.get("stargazers_count", 0), reverse=True)
         node = res.node("username", user, label=f"@{user}")
         langs: dict[str, int] = {}
         for repo in repos[:15]:

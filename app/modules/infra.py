@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import re
 import socket
-import ssl
 
 from ..core.base import (BaseModule, Category, Confidence, InputType, RunContext,
                          ModuleResult)
@@ -139,12 +138,13 @@ class TlsCertificate(BaseModule):
     tier = "base"
 
     async def run(self, ctx: RunContext) -> ModuleResult:
+        from ..core.net import tls_peercert
         res = self.result()
         host = _host_of(ctx.target)
         try:
-            der = await asyncio.get_event_loop().run_in_executor(None, self._fetch, host)
+            der = await asyncio.to_thread(tls_peercert, host)
         except Exception as e:
-            res.ok = False; res.error = f"TLS handshake failed: {e}"; return res
+            res.ok = False; res.error = f"TLS handshake failed: {type(e).__name__}"; return res
         if not der:
             res.summary = "No certificate retrieved"; return res
         from cryptography import x509
@@ -166,16 +166,6 @@ class TlsCertificate(BaseModule):
         res.summary = f"Cert for {host}, {res.extra.get('san_count',0)} SANs"
         return res
 
-    @staticmethod
-    def _fetch(host: str) -> bytes | None:
-        # Direct TLS to :443 is allowed for connect in many envs; wrap defensively.
-        ctxs = ssl.create_default_context()
-        ctxs.check_hostname = False
-        ctxs.verify_mode = ssl.CERT_NONE
-        with socket.create_connection((host, 443), timeout=8) as sock:
-            with ctxs.wrap_socket(sock, server_hostname=host) as ss:
-                return ss.getpeercert(binary_form=True)
-
 
 class SubdomainsCT(BaseModule):
     id = "subdomains_ct"
@@ -190,17 +180,27 @@ class SubdomainsCT(BaseModule):
         res = self.result()
         host = _host_of(ctx.target)
         subs: set[str] = set()
+        reachable = True
         try:
-            r = await get_client().get(f"https://crt.sh/?q=%25.{host}&output=json")
-            if r.status_code == 200:
+            r = await get_client().get(f"https://crt.sh/?q=%25.{host}&output=json",
+                                       timeout=16.0)
+            if r.status_code == 200 and r.text.strip().startswith("["):
                 for row in r.json():
                     for nm in str(row.get("name_value", "")).split("\n"):
                         nm = nm.strip().lstrip("*.").lower()
                         if nm.endswith(host):
                             subs.add(nm)
-        except Exception as e:
-            res.ok = False; res.error = str(e); return res
+            else:
+                reachable = False
+        except Exception:
+            # crt.sh is frequently slow/overloaded — treat as "no data", not a crash.
+            reachable = False
         dnode = res.node("domain", host, label=host)
+        if not subs and not reachable:
+            res.add("Cert Transparency", "crt.sh unavailable right now — try again shortly",
+                    Confidence.INFO)
+            res.summary = "CT log source (crt.sh) temporarily unavailable"
+            return res
         for s in sorted(subs)[:80]:
             res.add("subdomain", s, Confidence.LIKELY, pivot=s, link=f"https://{s}")
             sn = res.node("subdomain", s, label=s); res.edge(dnode.id, sn.id, "subdomain_of")
@@ -223,8 +223,13 @@ class HttpProbe(BaseModule):
         url = ctx.target if ctx.target.startswith("http") else f"https://{host}"
         try:
             r = await get_client().get(url)
-        except Exception as e:
-            res.ok = False; res.error = str(e); return res
+        except Exception:
+            # Many bare IPs/hosts simply don't serve HTTP — that's information,
+            # not a crash. Report it softly instead of a red error card.
+            res.node("ip" if ctx.input_type == InputType.IP else "domain", host, label=host)
+            res.add("HTTP(S)", "host did not accept an HTTP connection", Confidence.INFO)
+            res.summary = f"{host} does not serve HTTP(S) on the standard port"
+            return res
         res.node("domain", host, label=host)
         res.add("Final URL", str(r.url), Confidence.CONFIRMED, link=str(r.url))
         res.add("Status", r.status_code, Confidence.CONFIRMED)
@@ -381,24 +386,23 @@ class Wayback(BaseModule):
         try:
             r = await get_client().get(
                 "https://web.archive.org/cdx/search/cdx",
-                params={"url": host, "output": "json", "limit": "1", "fl": "timestamp,original"})
-            first = r.json()
-            r2 = await get_client().get(
-                "https://web.archive.org/cdx/search/cdx",
-                params={"url": host, "output": "json", "limit": "-1", "fl": "timestamp,original"})
-            last = r2.json()
-        except Exception as e:
-            res.ok = False; res.error = str(e); return res
+                params={"url": host, "output": "json", "collapse": "timestamp:4",
+                        "fl": "timestamp", "limit": "20000"})
+            rows = r.json() if r.status_code == 200 and r.text.strip().startswith("[") else []
+        except Exception:
+            rows = []
         res.node("domain", host, label=host)
-        def fmt(rows):
-            if len(rows) < 2: return None
-            ts = rows[1][0]
-            return f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}"
-        if fmt(first): res.add("First snapshot", fmt(first), Confidence.CONFIRMED)
-        if fmt(last): res.add("Latest snapshot", fmt(last), Confidence.CONFIRMED)
-        res.add("Archive", f"https://web.archive.org/web/*/{host}", Confidence.INFO,
+        stamps = [row[0] for row in rows[1:] if row and row[0].isdigit()]
+        def fmt(ts): return f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}"
+        if stamps:
+            res.add("First snapshot", fmt(min(stamps)), Confidence.CONFIRMED)
+            res.add("Latest snapshot", fmt(max(stamps)), Confidence.CONFIRMED)
+            res.add("Snapshots (approx)", f"{len(stamps)}+ captures", Confidence.LIKELY)
+        else:
+            res.add("Archive", "no snapshots found", Confidence.INFO)
+        res.add("Browse", f"web.archive.org/web/*/{host}", Confidence.INFO,
                 link=f"https://web.archive.org/web/*/{host}")
-        res.summary = f"Wayback history for {host}"
+        res.summary = f"{len(stamps)} archived snapshots for {host}" if stamps else f"No Wayback history for {host}"
         return res
 
 

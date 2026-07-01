@@ -18,6 +18,12 @@ from .cache import DiskCache
 from .graph import EntityGraph
 
 
+def _fmt_exc(e: Exception) -> str:
+    """A human error string even when str(e) is empty (common with httpx)."""
+    msg = str(e).strip()
+    return f"{type(e).__name__}: {msg}" if msg else type(e).__name__
+
+
 class HostRateLimiter:
     """A crude per-key async gate: at most `rate` concurrent + min gap."""
     def __init__(self, concurrency: int = 6) -> None:
@@ -58,7 +64,12 @@ class Orchestrator:
             result = ModuleResult(module=module.id, ok=False,
                                   error=f"timed out after {module.timeout:.0f}s")
         except Exception as e:  # error isolation — never propagate
-            result = ModuleResult(module=module.id, ok=False, error=f"{type(e).__name__}: {e}")
+            result = ModuleResult(module=module.id, ok=False, error=_fmt_exc(e))
+
+        # A failed module must never show a blank error card (some exceptions,
+        # e.g. httpx.ConnectError, stringify to ""). Give it a readable reason.
+        if not result.ok and not (result.error or "").strip():
+            result.error = "no response (connection failed or endpoint unreachable)"
 
         result.elapsed_ms = int((time.time() - started) * 1000)
         if result.ok and ctx.input_type.value != "image":
