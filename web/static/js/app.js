@@ -72,11 +72,33 @@ async function playBoot(count) {
 }
 
 // ---------------------------------------------------------------- data
+// Fetch with a few retries — preview tunnels can hiccup or rotate.
+async function fetchRetry(url, opts, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(url, opts);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r;
+    } catch (e) {
+      lastErr = e;
+      await new Promise((res) => setTimeout(res, 400 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 async function loadData() {
-  const [h, m] = await Promise.all([
-    fetch("/api/health").then((r) => r.json()).catch(() => null),
-    fetch("/api/modules").then((r) => r.json()),
-  ]);
+  let m;
+  try {
+    const r = await fetchRetry("/api/modules", {}, 4);
+    m = await r.json();
+  } catch (e) {
+    state.offline = true;
+    return 0;
+  }
+  const h = await fetch("/api/health").then((r) => r.json()).catch(() => null);
+  state.offline = false;
   state.modules = m.modules;
   state.tiers = m.tiers;
   state.byCat = {};
@@ -278,7 +300,16 @@ async function runAll() {
     state.lastResult = res;
     renderResults(res);
   } catch (e) {
-    $("#content").innerHTML = `<div class="card err"><div class="card-head"><span class="card-title">Run failed</span></div><div class="card-body"><table class="rec"><tr><td class="v">${esc(e)}</td></tr></table></div></div>`;
+    // Almost always a dropped/rotated preview link — say so clearly.
+    $("#content").innerHTML = `<div class="card err open">
+      <div class="card-head"><span class="card-dot" style="background:var(--bad)"></span>
+        <span class="card-title">Couldn't reach the server</span></div>
+      <div class="card-body"><table class="rec">
+        <tr><td class="k">reason</td><td class="v">${esc(String(e && e.message || e))}</td></tr>
+        <tr><td class="k">likely cause</td><td class="v">the preview link expired or rotated — get the current link, or deploy to a permanent host</td></tr>
+      </table>
+      <div style="padding:12px 16px"><button class="btn" onclick="location.reload()">Reload</button></div>
+      </div></div>`;
   } finally {
     $("#progress").style.width = "100%";
     setTimeout(() => setProgress(false), 300);
@@ -684,8 +715,30 @@ function wireGlobal() {
   wireGlobal();
   const count = await loadData().catch(() => 0);
   renderNav();
-  onNav("home");
+  if (state.offline) showOffline();
+  else onNav("home");
   await playBoot(count);
   // register PWA service worker
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 })();
+
+// Shown when the API can't be reached — usually a rotated/expired preview link.
+function showOffline() {
+  $("#topbar-title").textContent = "Offline";
+  const c = $("#content");
+  c.className = "content view";
+  c.innerHTML = `<div class="offline-card">
+    <div class="offline-ico">⚠</div>
+    <h2>Can't reach the server</h2>
+    <p>The API isn't responding. If you're on a temporary preview link it may have
+    expired or rotated to a new address. Ask for the current link, or deploy LATTICE
+    to a permanent host.</p>
+    <button class="btn" id="retry-btn">Retry connection</button>
+  </div>`;
+  $("#retry-btn").onclick = async () => {
+    $("#retry-btn").textContent = "Connecting…";
+    const count = await loadData().catch(() => 0);
+    if (!state.offline) { renderNav(); onNav("home"); toast("Reconnected"); }
+    else { $("#retry-btn").textContent = "Retry connection"; toast("Still unreachable"); }
+  };
+}

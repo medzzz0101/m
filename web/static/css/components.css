@@ -247,6 +247,13 @@
 .boot-lines .caret { color:var(--accent); }
 .boot-skip { position:absolute; bottom:var(--s6); font-size:11px; letter-spacing:.2em; color:var(--text-3); }
 
+/* offline card */
+.offline-card { text-align:center; padding:48px var(--s5); background:var(--surface);
+  border:1px solid var(--line); border-radius:var(--r3); max-width:460px; margin:40px auto; }
+.offline-ico { font-size:40px; color:var(--possible); margin-bottom:var(--s3); }
+.offline-card h2 { font-size:19px; margin:0 0 var(--s3); }
+.offline-card p { color:var(--text-2); font-size:14px; line-height:1.6; margin:0 0 var(--s5); }
+
 /* toast */
 .toast { position:fixed; bottom:calc(var(--tabbar) + 12px); left:50%; transform:translateX(-50%);
   background:var(--surface-3); border:1px solid var(--line-strong); border-radius:var(--pill);
