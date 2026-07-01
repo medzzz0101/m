@@ -80,20 +80,22 @@ TIER_MAP = {
     # Premium — solid recon + first identity/blockchain/image depth.
     "premium": ["subdomains", "asn", "security_headers", "tls_certs",
                 "http_methods", "telegram", "image_meta", "btc_explorer",
-                "email_exposure", "google_dorks", "cidr_calc", "decoder"],
+                "email_exposure", "google_dorks", "cidr_calc", "decoder",
+                "hash_identify", "url_unshorten"],
     # Elite — full fingerprinting + more social + more forensics.
     "elite": ["tech_fingerprint", "waf_cdn_detect", "favicon_hash", "reverse_ip",
               "tls_scan", "cors_check", "wellknown", "site_intel", "eth_explorer",
-              "image_phash", "sun_calc", "phone_info", "hsts_preload", "mac_lookup"],
+              "image_phash", "sun_calc", "phone_info", "hsts_preload", "mac_lookup",
+              "ens_resolve", "dns_hostsearch"],
     # Mega — passive exposure, CVEs, scoring, deep social.
     "mega": ["shodan_internetdb", "cve_lookup", "exposure_score",
              "subdomain_brute", "threat_feeds", "tiktok", "discord",
              "telegram_channel", "github_user", "steam", "greynoise",
-             "jwt_decoder", "email_headers"],
+             "jwt_decoder", "email_headers", "tor_exit", "keybase"],
     # Ultra — heavy attack-surface + advanced blockchain/forensics.
     "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
               "web_screenshot", "typosquat", "image_ela", "btc_trace",
-              "urlscan", "file_forensics"],
+              "urlscan", "file_forensics", "doc_metadata", "zone_transfer"],
     # Master — everything, including the one ACTIVE module.
     "master": ["port_services"],
 }
