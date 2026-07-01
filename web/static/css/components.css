@@ -16,14 +16,7 @@
 .theme-dot:hover { transform: scale(1.15); }
 .theme-dot.active { border-color: #fff; transform: scale(1.1); }
 
-/* Decorative "targeting" corner brackets on result cards (drawn with CSS). */
-.card .card-body { position: relative; }
-.card::after {
-  content: ""; position: absolute; top: 8px; right: 8px; width: 12px; height: 12px;
-  border-top: 1.5px solid var(--cat, var(--accent-line));
-  border-right: 1.5px solid var(--cat, var(--accent-line));
-  opacity: 0.45; pointer-events: none; border-radius: 0 4px 0 0;
-}
+/* (Corner brackets removed for a cleaner, more professional card.) */
 
 /* ---------------- Subscription plan selector ---------------- */
 .plan-box { padding: var(--s3) var(--s4) var(--s2); }
@@ -542,15 +535,15 @@ body.has-results .landing-only { display: none !important; }
 .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
   background: currentColor; box-shadow: 0 0 8px currentColor; }
 .pill.high { background: var(--good-soft); color: var(--good);
-  border-color: rgba(90,214,160,0.4); box-shadow: 0 0 16px rgba(90,214,160,0.22); }
+  border-color: rgba(90,214,160,0.3); }
 .pill.medium { background: var(--warn-soft); color: var(--warn);
-  border-color: rgba(232,196,104,0.4); box-shadow: 0 0 16px rgba(232,196,104,0.2); }
+  border-color: rgba(232,196,104,0.3); }
 .pill.low { background: var(--bad-soft); color: var(--bad);
-  border-color: rgba(240,138,138,0.4); }
+  border-color: rgba(240,138,138,0.3); }
 .pill.info { background: var(--info-soft); color: var(--info);
-  border-color: rgba(127,182,240,0.35); }
+  border-color: rgba(127,182,240,0.28); }
 .pill.err { background: var(--bad-soft); color: var(--bad);
-  border-color: rgba(240,138,138,0.45); box-shadow: 0 0 16px rgba(240,138,138,0.22); }
+  border-color: rgba(240,138,138,0.35); }
 
 /* JSON drawer */
 .json-drawer { border-top: 1px solid var(--border); }
