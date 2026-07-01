@@ -72,6 +72,7 @@ export class GraphView {
         y: H / 2 + (Math.random() - 0.5) * 260,
         vx: 0, vy: 0,
         r: 6 + Math.min(10, (n.degree || 0) * 1.5),
+        born: performance.now(),   // for the scale-in entrance animation
       };
       this._byId.set(n.id, node);
       this.nodes.push(node);
@@ -148,9 +149,15 @@ export class GraphView {
       ctx.fillText(e.label, mx + 2, my - 2);
     }
     // nodes
+    const now = performance.now();
     for (const n of this.nodes) {
       const c = nodeColor(n.type);
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+      // Entrance: scale + fade in over 400ms from when the node was born.
+      const age = Math.min(1, (now - (n.born || 0)) / 400);
+      const grow = 0.4 + 0.6 * (1 - Math.pow(1 - age, 3));
+      const r = n.r * grow;
+      ctx.globalAlpha = age;
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fillStyle = c;
       ctx.shadowColor = c; ctx.shadowBlur = n === this.hover ? 18 : 6;
       ctx.fill(); ctx.shadowBlur = 0;
@@ -159,7 +166,8 @@ export class GraphView {
       ctx.fillStyle = "rgba(236,235,242,0.92)";
       ctx.font = "10px ui-monospace, monospace";
       const label = (n.label || n.value || "").slice(0, 22);
-      ctx.fillText(label, n.x + n.r + 4, n.y + 3);
+      ctx.fillText(label, n.x + r + 4, n.y + 3);
+      ctx.globalAlpha = 1;
     }
     ctx.restore();
     this._raf = requestAnimationFrame(() => this._tick());

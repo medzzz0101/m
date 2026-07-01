@@ -425,6 +425,37 @@ body.has-results .landing-only { display: none !important; }
 }
 .report-dropdown button:hover { background: var(--accent-soft); color: var(--text); }
 
+/* ---------------- Graph legend ---------------- */
+.graph-legend {
+  display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s3);
+}
+.legend-item {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 11px;
+  font-family: var(--font-mono); color: var(--text-2);
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 3px 9px; border-radius: var(--r-pill);
+  animation: cardIn var(--t-fast) both;
+}
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* ---------------- Extra micro-interactions ---------------- */
+/* Run button shows a live pulse while a run is in flight (.running on body). */
+body.running .btn-primary { position: relative; overflow: hidden; }
+body.running .btn-primary::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  animation: sweep 1s linear infinite;
+}
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+
+/* The detected-type pill gently pulses while running. */
+body.running .input-type-pill { animation: pulse 1s ease-in-out infinite; }
+
+.btn-primary:active, .btn-ghost:active, .chip:active { transform: scale(0.96); }
+
+/* Cards get a soft one-shot glow when they first resolve. */
+.card { will-change: transform, opacity; }
+
 /* ---------------- Keyframes ---------------- */
 @keyframes cardIn { from { opacity: 0; transform: translateY(10px) scale(0.99); }
   to { opacity: 1; transform: none; } }

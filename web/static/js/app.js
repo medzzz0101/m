@@ -8,7 +8,7 @@
    No framework — just modules + the DOM. Heavily commented for learning.
    ========================================================================== */
 
-import { $, $$, el, api, copy, toast, debounce, icon } from "./util.js";
+import { $, $$, el, esc, api, copy, toast, debounce, icon } from "./util.js";
 import { GraphView } from "./graph.js";
 
 const state = {
@@ -70,10 +70,28 @@ function renderStats() {
     ["100%", "Public data"],
   ];
   for (const [num, label] of items) {
-    strip.append(el("div", { class: "stat" },
-      el("div", { class: "stat-num", html: num.replace("%", '<span class="accent">%</span>') }),
+    const numEl = el("div", { class: "stat-num" });
+    strip.append(el("div", { class: "stat" }, numEl,
       el("div", { class: "stat-label" }, label)));
+    countUp(numEl, num);
   }
+}
+
+// Animate a number from 0 → target (keeps a trailing % / suffix).
+function countUp(node, text) {
+  const m = String(text).match(/^(\d+)(.*)$/);
+  if (!m) { node.textContent = text; return; }
+  const target = parseInt(m[1], 10), suffix = m[2];
+  const dur = 750, t0 = performance.now();
+  const tick = (t) => {
+    const p = Math.min(1, (t - t0) / dur);
+    const eased = 1 - Math.pow(1 - p, 3);        // easeOutCubic
+    const val = Math.round(target * eased);
+    node.innerHTML = val + (suffix === "%"
+      ? '<span class="accent">%</span>' : esc(suffix));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // The capability deck — every module as a tappable card, grouped by category.
@@ -446,6 +464,21 @@ function openGraph() {
   const s = state.lastRun.graph.stats;
   $("#graph-stats").textContent = `${s.node_count} nodes · ${s.edge_count} edges`;
   $("#node-pop").hidden = true;
+  renderLegend(s.by_type || {});
+}
+
+// Colour legend for the node types actually present in the graph.
+function renderLegend(byType) {
+  const host = $("#graph-legend");
+  host.innerHTML = "";
+  const css = getComputedStyle(document.documentElement);
+  Object.entries(byType).sort((a, b) => b[1] - a[1]).forEach(([type, count]) => {
+    const color = css.getPropertyValue(`--n-${type}`).trim() ||
+      css.getPropertyValue("--n-default").trim();
+    host.append(el("span", { class: "legend-item" },
+      el("span", { class: "legend-dot", style: `background:${color};box-shadow:0 0 6px ${color}` }),
+      `${type} ${count}`));
+  });
 }
 
 // Node types we can pivot on (they map to a runnable input type).
@@ -659,6 +692,7 @@ function showView(name) {
 }
 function progress(on) {
   const bar = $("#progress-bar");
+  document.body.classList.toggle("running", on);
   if (on) { bar.classList.add("active"); bar.style.width = "85%"; }
   else { bar.style.width = "100%"; setTimeout(() => {
     bar.classList.remove("active"); bar.style.width = "0"; }, 250); }
