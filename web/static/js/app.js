@@ -118,6 +118,8 @@ function renderPlanBox() {
     list.append(opt);
   }
   box.append(list);
+  box.append(el("button", { class: "plan-upgrade", onclick: openPricing },
+    "⬆ See plans & pricing"));
   current.addEventListener("click", () => { list.hidden = !list.hidden; });
   const cnt = $("#plan-label-count");
   if (cnt) cnt.textContent = unlocked;
@@ -130,7 +132,63 @@ function setPlan(t) {
   renderPlanBox();
   renderStats();
   renderDeck();
+  if (state.lastRun) {}  // (leave existing results as-is)
   toast(`${TIER_META[t]?.name || t} plan — ${state.modules.filter(isUnlocked).length} modules unlocked`);
+}
+
+// --- Pricing / upgrade page -------------------------------------------------
+const TIER_PRICE = { base: 0, premium: 9, elite: 19, mega: 39, ultra: 79, master: 149 };
+const TIER_TAGLINE = {
+  base: "Get started with the essentials",
+  premium: "Everyday investigations",
+  elite: "Full-spectrum fingerprinting",
+  mega: "Exposure intel + deep social",
+  ultra: "Heavy attack-surface & forensics",
+  master: "The complete arsenal",
+};
+
+function openPricing() { closeSidebar(); renderPricing(); $("#pricing").hidden = false; }
+function closePricing() { $("#pricing").hidden = true; }
+
+function renderPricing() {
+  const grid = $("#pricing-grid");
+  grid.innerHTML = "";
+  for (const t of state.tiers) {
+    const tm = TIER_META[t] || {};
+    const mods = state.modules.filter((m) => (m.tier || "base") === t);
+    const cumulative = state.modules.filter(
+      (m) => tierIdx(m.tier || "base") <= tierIdx(t)).length;
+    const price = TIER_PRICE[t] ?? 0;
+    const isCurrent = t === state.plan;
+    // A few standout module names unlocked at this tier.
+    const highlights = mods.slice(0, 4).map((m) => m.name);
+
+    const card = el("div", {
+      class: "price-card" + (isCurrent ? " current" : "") +
+        (t === "master" ? " featured" : ""),
+      style: `--pc:${tm.color}`,
+    },
+      t === "master" ? el("div", { class: "price-flag" }, "BEST VALUE") : null,
+      el("div", { class: "price-name" },
+        el("span", { class: "plan-dot", style: `--pc:${tm.color}` }), tm.name),
+      el("div", { class: "price-tag" }, tm.blurb || ""),
+      el("div", { class: "price-amount" },
+        price === 0 ? el("span", {}, "Free")
+          : el("span", {}, el("span", { class: "price-cur" }, "€"), String(price),
+              el("span", { class: "price-per" }, "/mo"))),
+      el("div", { class: "price-power" }, "⚡".repeat(tm.power || 1) +
+        `  ·  ${cumulative} modules`),
+      el("ul", { class: "price-feats" },
+        ...highlights.map((h) => el("li", {}, h)),
+        el("li", { class: "price-more" }, `+ everything in lower tiers`)),
+      el("button", {
+        class: isCurrent ? "btn-ghost price-btn" : "btn-primary price-btn",
+        disabled: isCurrent || undefined,
+        onclick: () => { setPlan(t); closePricing();
+          toast(`Switched to ${tm.name} ✓`); },
+      }, isCurrent ? "Current plan" : (price === 0 ? "Select" : `Choose ${tm.name}`)));
+    grid.append(card);
+  }
 }
 
 // Small dashboard of headline numbers on the landing.
@@ -344,6 +402,8 @@ function bindUI() {
   $("#view-graph-btn").addEventListener("click", openGraph);
   $("#graph-back").addEventListener("click", () => showView("workspace"));
   $("#node-pop-close").addEventListener("click", () => ($("#node-pop").hidden = true));
+  $("#pricing-close").addEventListener("click", closePricing);
+  $("#pricing").addEventListener("click", (e) => { if (e.target.id === "pricing") closePricing(); });
 
   // Report export menu.
   $("#report-btn").addEventListener("click", (e) => {

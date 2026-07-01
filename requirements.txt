@@ -16,3 +16,4 @@ Pillow==11.1.0            # image decoding + EXIF access for geolocation
 exifread==3.0.0           # robust EXIF/GPS tag extraction (handles odd cameras)
 mmh3==5.0.1               # MurmurHash3 — favicon hashing for infra correlation
 python-whois==0.9.5       # fallback WHOIS when RDAP has no data
+phonenumbers==8.13.52     # libphonenumber — phone-number metadata (not owner)

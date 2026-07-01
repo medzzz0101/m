@@ -41,6 +41,9 @@ _DOMAIN = re.compile(
     r"(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))+$"
 )
 
+# Phone — an optional +, then 7–15 digits with common separators.
+_PHONE = re.compile(r"^\+?[0-9][0-9\s\-().]{5,18}[0-9]$")
+
 # Username — what a handle usually looks like (no dots-as-domains, no @).
 _USERNAME = re.compile(r"^[A-Za-z0-9._-]{2,40}$")
 
@@ -83,6 +86,13 @@ def detect(value: str) -> InputType:
     if _HASH.match(v):
         return InputType.HASH
 
+    # 6b. Phone number (optional +, mostly digits, 7–15 significant digits).
+    digits = re.sub(r"\D", "", v)
+    if _PHONE.match(v) and 7 <= len(digits) <= 15 and (
+            v.startswith("+") or not v.isalnum() or v.isdigit()):
+        # Avoid grabbing short pure-digit "usernames": require 7+ digits (above).
+        return InputType.PHONE
+
     # 7. Domain (has a dot, valid label structure).
     if "." in v and _DOMAIN.match(v):
         return InputType.DOMAIN
@@ -108,4 +118,5 @@ TYPE_LABELS: dict[InputType, str] = {
     InputType.FILE: "File",
     InputType.TEXT: "Text",
     InputType.HASH: "Hash",
+    InputType.PHONE: "Phone",
 }

@@ -47,6 +47,7 @@ class InputType(str, Enum):
     FILE = "file"
     TEXT = "text"
     HASH = "hash"
+    PHONE = "phone"
 
 
 # ---------------------------------------------------------------------------

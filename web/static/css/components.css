@@ -525,6 +525,67 @@ body.has-results .landing-only { display: none !important; }
 .chip-pw { color: var(--warn); border-color: rgba(232,196,104,0.4);
   background: var(--warn-soft); font-weight: 600; }
 
+/* ---------------- Plan upgrade button + Pricing page ---------------- */
+.plan-upgrade {
+  width: 100%; margin-top: var(--s3); padding: 9px; border-radius: var(--r-sm);
+  background: var(--tier-soft, var(--accent-soft)); color: var(--tier, var(--accent));
+  border: 1px solid var(--tier-line, var(--accent-line)); cursor: pointer;
+  font-size: 12px; font-weight: 600; transition: all var(--t-fast);
+}
+.plan-upgrade:hover { filter: brightness(1.15); transform: translateY(-1px); }
+
+.pricing-overlay {
+  position: fixed; inset: 0; z-index: 90; background: rgba(6,6,9,0.86);
+  backdrop-filter: blur(10px); overflow-y: auto; animation: viewIn var(--t-med);
+  padding: env(safe-area-inset-top) 0 40px;
+}
+.pricing-shell { max-width: 1100px; margin: 0 auto; padding: var(--s6) var(--s4); }
+.pricing-head { display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--s4); margin-bottom: var(--s6); }
+.pricing-title { font-size: clamp(24px, 6vw, 34px); font-weight: 800;
+  letter-spacing: -0.02em; background: linear-gradient(180deg,#fff,var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pricing-sub { color: var(--text-2); font-size: 14px; margin-top: 6px; max-width: 560px; }
+.pricing-grid { display: grid; gap: var(--s4);
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.pricing-foot { text-align: center; color: var(--text-3); font-size: 11px;
+  margin-top: var(--s5); }
+
+.price-card {
+  position: relative; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--s5) var(--s4); display: flex;
+  flex-direction: column; gap: var(--s2); transition: transform var(--t-fast),
+    border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.price-card:hover { transform: translateY(-4px); border-color: var(--pc);
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--pc) 22%, transparent); }
+.price-card.current { border-color: var(--pc);
+  box-shadow: 0 0 0 1px var(--pc), 0 12px 30px color-mix(in srgb,var(--pc) 20%,transparent); }
+.price-card.featured { background: linear-gradient(180deg,
+  color-mix(in srgb, var(--pc) 10%, var(--surface)), var(--surface)); }
+.price-flag { position: absolute; top: -10px; right: 14px; font-size: 9px;
+  font-weight: 800; letter-spacing: 0.1em; padding: 4px 10px; border-radius: var(--r-pill);
+  background: var(--pc); color: #0a0a0c; box-shadow: 0 4px 14px color-mix(in srgb,var(--pc) 50%,transparent); }
+.price-name { display: flex; align-items: center; gap: 8px; font-size: 18px;
+  font-weight: 800; color: #fff; }
+.price-tag { font-size: 12px; color: var(--text-3); }
+.price-amount { font-size: 34px; font-weight: 800; color: #fff; margin: var(--s2) 0;
+  line-height: 1; }
+.price-cur { font-size: 18px; vertical-align: super; margin-right: 2px;
+  color: var(--text-2); }
+.price-per { font-size: 13px; color: var(--text-3); font-weight: 500; }
+.price-power { font-size: 12px; color: var(--pc); font-family: var(--font-mono);
+  margin-bottom: var(--s2); }
+.price-feats { list-style: none; margin: 0 0 var(--s4); padding: 0; flex: 1;
+  display: flex; flex-direction: column; gap: 7px; }
+.price-feats li { font-size: 12.5px; color: var(--text-2); padding-left: 20px;
+  position: relative; }
+.price-feats li::before { content: "✓"; position: absolute; left: 0; color: var(--pc);
+  font-weight: 700; }
+.price-feats .price-more { color: var(--text-3); font-style: italic; }
+.price-feats .price-more::before { content: "＋"; }
+.price-btn { width: 100%; justify-content: center; }
+
 /* ---------------- Toasts ---------------- */
 .toast-host { position: fixed; bottom: calc(var(--s5) + env(safe-area-inset-bottom));
   left: 50%; transform: translateX(-50%); z-index: 90; display: flex;
