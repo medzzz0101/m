@@ -35,7 +35,7 @@ class Orchestrator:
     def __init__(self, cache: DiskCache, cache_ttl: float = 900.0) -> None:
         self.cache = cache
         self.cache_ttl = cache_ttl
-        self.limiter = HostRateLimiter(concurrency=8)
+        self.limiter = HostRateLimiter(concurrency=16)
 
     async def _run_one(self, module: BaseModule, ctx: RunContext) -> ModuleResult:
         started = time.time()

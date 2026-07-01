@@ -6,10 +6,12 @@ const NODE_COLORS = {
   username: "#8b7cff", profile: "#a99bff", email: "#e8c468",
   domain: "#7fb6f0", subdomain: "#9ecbf5", ip: "#5ad6a0",
   geo: "#f08a8a", tech: "#e892d0", org: "#ffffff", url: "#c0c6d0",
+  btc: "#f7931a",
 };
 const col = (t) => NODE_COLORS[t] || "#6d6b7e";
 
-export function renderGraph(canvas, data) {
+// onPivot(value) is called when a node is clicked — lets the app re-run on it.
+export function renderGraph(canvas, data, onPivot) {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   function resize() {
@@ -80,13 +82,19 @@ export function renderGraph(canvas, data) {
     ctx.font = `${11 * dpr}px ui-monospace, monospace`;
     for (const n of nodes) {
       const c = col(n.type);
+      // hovered node gets a ring
+      if (n === hover) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 5 * dpr, 0, Math.PI * 2);
+        ctx.strokeStyle = c; ctx.lineWidth = 1.5 * dpr; ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1;
+      }
       ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = (n === hover ? 16 : 6) * dpr;
+      ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = (n === hover ? 18 : 7) * dpr;
       ctx.fill(); ctx.shadowBlur = 0;
-      if (n === hover || n.r > 9 * dpr) {
-        ctx.fillStyle = "#cdd2da";
-        const label = (n.label || n.value || "").slice(0, 22);
-        ctx.fillText(label, n.x + n.r + 4 * dpr, n.y + 4 * dpr);
+      // label: always for meaningful nodes, or on hover
+      if (n === hover || (n.degree || 0) >= 1 || nodes.length <= 12) {
+        const label = (n.label || n.value || "").slice(0, 24);
+        ctx.fillStyle = n === hover ? "#f0f2f5" : "#aab0bb";
+        ctx.fillText(label, n.x + n.r + 5 * dpr, n.y + 4 * dpr);
       }
     }
     ctx.restore();
@@ -103,7 +111,12 @@ export function renderGraph(canvas, data) {
     const y = (ev.clientY - rect.top) * dpr - pan.y;
     return nodes.find((n) => (x - n.x) ** 2 + (y - n.y) ** 2 < (n.r + 4 * dpr) ** 2);
   }
-  canvas.onmousedown = (ev) => { drag = at(ev); if (!drag) drag = { pan: true, sx: ev.clientX - pan.x, sy: ev.clientY - pan.y }; };
+  let downPos = null, downNode = null;
+  canvas.onmousedown = (ev) => {
+    downPos = { x: ev.clientX, y: ev.clientY };
+    downNode = at(ev);
+    drag = downNode || { pan: true, sx: ev.clientX - pan.x, sy: ev.clientY - pan.y };
+  };
   canvas.onmousemove = (ev) => {
     hover = at(ev);
     canvas.style.cursor = hover ? "pointer" : "grab";
@@ -114,7 +127,13 @@ export function renderGraph(canvas, data) {
       drag.y = (ev.clientY - rect.top) * dpr - pan.y;
     }
   };
-  canvas.onmouseup = () => { drag = null; };
+  canvas.onmouseup = (ev) => {
+    // A click (little movement) on a node = pivot to re-run it.
+    if (downNode && downPos && Math.hypot(ev.clientX - downPos.x, ev.clientY - downPos.y) < 5) {
+      if (onPivot) onPivot(downNode.value, downNode.type);
+    }
+    drag = null; downNode = null; downPos = null;
+  };
   canvas.onmouseleave = () => { drag = null; hover = null; };
 
   return { stop() { running = false; } };

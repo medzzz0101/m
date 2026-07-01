@@ -230,15 +230,20 @@ class Typosquat(BaseModule):
                 variants.add(name.replace(a, b, 1) + "." + tld)
         variants.discard(host)
         node = res.node("domain", host, label=host)
-        live = 0
-        for v in list(variants)[:25]:
+        cand = list(variants)[:24]
+
+        # Resolve concurrently in threads so we never block the event loop.
+        import asyncio
+        async def resolves(v):
             try:
-                socket.gethostbyname(v)
-                res.add(v, "RESOLVES (registered)", Confidence.LIKELY, pivot=v, link=f"https://{v}")
-                live += 1
+                await asyncio.to_thread(socket.gethostbyname, v)
+                return v
             except Exception:
-                continue
-        res.summary = f"{live} of {min(len(variants),25)} look-alike domains resolve"
+                return None
+        hits = [v for v in await asyncio.gather(*(resolves(v) for v in cand)) if v]
+        for v in hits:
+            res.add(v, "RESOLVES (registered)", Confidence.LIKELY, pivot=v, link=f"https://{v}")
+        res.summary = f"{len(hits)} of {len(cand)} look-alike domains resolve"
         return res
 
 

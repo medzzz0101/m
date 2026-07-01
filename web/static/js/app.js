@@ -310,7 +310,8 @@ function showResults(loading = false) {
   const c = $("#content");
   c.className = "content view";
   if (loading) {
-    c.innerHTML = `<div class="results">${'<div class="skel"></div>'.repeat(5)}</div>`;
+    c.innerHTML = `<div class="scanning"><span class="scan-dot"></span> Correlating public signals across ${state.modules.length} modules…</div>
+      <div class="results">${'<div class="skel"></div>'.repeat(5)}</div>`;
   } else if (state.lastResult) {
     renderResults(state.lastResult);
   } else {
@@ -323,15 +324,29 @@ function renderResults(res) {
   c.className = "content view";
   c.innerHTML = "";
   const st = res.stats || {};
+  const totalFindings = (res.modules || []).reduce((a, m) => a + (m.findings || []).length, 0);
   // toolbar
   const bar = el("div", "rtoolbar");
   bar.innerHTML = `<span class="target">${esc(res.target || "—")}</span>
     <span class="rstat">${st.ok || 0} ok · ${st.failed || 0} failed · ${st.nodes || 0} entities · ${st.edges || 0} links</span>`;
   if (res.graph && (res.graph.nodes || []).length) {
-    const gb = el("button", "chip", "View graph →");
+    const gb = el("button", "chip", "Graph →");
     gb.onclick = showGraph; bar.appendChild(gb);
   }
+  const ex = el("button", "chip", "⬇ Export");
+  ex.onclick = () => exportReport(res); bar.appendChild(ex);
   c.appendChild(bar);
+
+  // dashboard: quick metric tiles for the current target
+  const dash = el("div", "dash");
+  const mm = [
+    [st.ok || 0, "modules hit"],
+    [totalFindings, "findings"],
+    [st.nodes || 0, "entities"],
+    [st.edges || 0, "links"],
+  ];
+  dash.innerHTML = mm.map(([n, l]) => `<div class="dash-cell"><div class="dash-n">${n}</div><div class="dash-l">${l}</div></div>`).join("");
+  c.appendChild(dash);
 
   // map (if any module returned a point)
   const mapPoint = collectMapPoint(res);
@@ -414,6 +429,9 @@ function showGraph() {
     c.innerHTML = emptyState("Empty graph", "Run a target — discovered entities and their links appear here.");
     return;
   }
+  const head = el("div", "section-h");
+  head.innerHTML = `<h2>Entity graph</h2><span class="rule"></span><span class="hint">${g.nodes.length} entities · ${g.edges.length} links · tap a node to pivot</span>`;
+  c.appendChild(head);
   const wrap = el("div", "graph-wrap");
   wrap.innerHTML = `<canvas id="graph"></canvas><div class="graph-legend" id="legend"></div>`;
   c.appendChild(wrap);
@@ -422,7 +440,8 @@ function showGraph() {
   $("#legend").innerHTML = types.map((t) =>
     `<span class="leg"><i style="background:var(--n-${t},#6d6b7e)"></i>${t}</span>`).join("");
   if (state.graphInstance) state.graphInstance.stop();
-  requestAnimationFrame(() => { state.graphInstance = renderGraph($("#graph"), g); });
+  const pivot = (value) => { const i = ensureInput(); i.value = value; onNav("home"); setTimeout(() => { $("#target").value = value; runAll(); }, 50); };
+  requestAnimationFrame(() => { state.graphInstance = renderGraph($("#graph"), g, pivot); });
 }
 
 // ---------------------------------------------------------------- MAP
@@ -591,6 +610,27 @@ function openCmdk() {
   inp.addEventListener("input", () => render(inp.value));
   render();
   setTimeout(() => inp.focus(), 50);
+}
+
+// Build and download a Markdown report of the current result.
+function exportReport(res) {
+  const lines = [`# LATTICE report — ${res.target}`, "",
+    `Generated ${new Date().toISOString()}`,
+    `Type: ${res.input_type} · ${res.stats?.ok || 0} modules · ${res.stats?.nodes || 0} entities`, ""];
+  for (const m of res.modules || []) {
+    if (!m.ok || !(m.findings || []).length) continue;
+    const meta = state.modules.find((x) => x.id === m.module) || {};
+    lines.push(`## ${meta.name || m.module}`, `_${m.summary || ""}_`, "");
+    for (const f of m.findings) lines.push(`- **${f.key}**: ${f.value}${f.link ? ` (${f.link})` : ""}`);
+    lines.push("");
+  }
+  lines.push("---", "_All data from public sources. Public-data OSINT only._");
+  const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `lattice-${(res.target || "report").replace(/[^\w.-]/g, "_")}.md`;
+  a.click();
+  toast("Report downloaded");
 }
 
 // ---------------------------------------------------------------- helpers
