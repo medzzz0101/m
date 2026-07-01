@@ -799,7 +799,23 @@ function renderDashboard(out) {
   dash.append(gt);
   drawMiniGraph($("#tile-graphviz"), out.graph);
 
-  // 4) ALERTS tile (wide) — only if there are any.
+  // 4) MAP tile (wide) — every geolocation found in this run, if any.
+  const geo = [];
+  for (const n of (out.graph?.nodes || [])) {
+    const la = n.props?.lat, lo = n.props?.lon;
+    if (typeof la === "number" && typeof lo === "number")
+      geo.push({ lat: la, lon: lo, label: n.label || n.value });
+  }
+  for (const r of results) for (const f of (r.findings || []))
+    if (f.map && typeof f.map.lat === "number")
+      geo.push({ lat: f.map.lat, lon: f.map.lon, label: f.map.label || r.module });
+  if (geo.length) {
+    dash.append(tile("t-map", "wide", el("div", { class: "tile-k" }, `MAP · ${geo.length} location(s)`),
+      el("div", { class: "tile-map", id: "tile-map" })));
+    requestAnimationFrame(() => drawMapTile($("#tile-map"), geo));
+  }
+
+  // 5) ALERTS tile (wide) — only if there are any.
   if (alerts.length) {
     dash.append(tile("t-alerts", "wide alert",
       el("div", { class: "tile-k" }, `⚠ ALERTS · ${alerts.length}`),
@@ -837,6 +853,22 @@ function drawMiniGraph(host, graph) {
   });
   host.innerHTML = "";
   host.appendChild(svg);
+}
+
+// Leaflet map tile with every geolocation found in the run.
+function drawMapTile(host, points) {
+  if (!host || !window.L || !points.length) return;
+  const map = L.map(host, { attributionControl: false, zoomControl: false });
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  const latlngs = [];
+  for (const p of points) {
+    L.circleMarker([p.lat, p.lon], { radius: 6, color: "#8b7cff",
+      fillColor: "#8b7cff", fillOpacity: 0.7, weight: 2 })
+      .addTo(map).bindPopup(p.label);
+    latlngs.push([p.lat, p.lon]);
+  }
+  if (latlngs.length === 1) map.setView(latlngs[0], 9);
+  else map.fitBounds(latlngs, { padding: [24, 24] });
 }
 
 // ------------------------------------------------------------ result filters --

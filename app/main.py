@@ -92,7 +92,7 @@ TIER_MAP = {
              "subdomain_brute", "threat_feeds", "tiktok", "discord",
              "telegram_channel", "github_user", "steam", "greynoise",
              "jwt_decoder", "email_headers", "tor_exit", "keybase",
-             "bluesky", "mastodon", "spamhaus_drop"],
+             "bluesky", "mastodon", "spamhaus_drop", "ripestat", "sslbl"],
     # Ultra — heavy attack-surface + advanced blockchain/forensics.
     "ultra": ["exposed_files", "subdomain_takeover", "cloud_buckets",
               "web_screenshot", "typosquat", "image_ela", "btc_trace",
