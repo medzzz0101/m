@@ -118,15 +118,24 @@
 .card-body { display:none; }
 .card.open .card-body { display:block; }
 
-/* dense table */
-.rec { width:100%; border-collapse:collapse; font-size:13px; }
+/* dense table (key/value). Desktop: two columns; mobile: stacked. */
+.rec { width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed; }
 .rec tr { border-bottom:1px solid var(--line); }
 .rec tr:last-child { border-bottom:none; }
-.rec td { padding:8px var(--s4); vertical-align:top; }
-.rec td.k { color:var(--text-3); white-space:nowrap; width:38%; font-size:12px; }
-.rec td.v { font-family:var(--mono); color:var(--text); word-break:break-word; }
+.rec td { padding:9px var(--s4); vertical-align:top; }
+.rec td.k { color:var(--text-3); width:34%; font-size:12px; overflow-wrap:anywhere; }
+.rec td.k .pill { margin-left:6px; vertical-align:middle; }
+.rec td.v { font-family:var(--mono); color:var(--text); overflow-wrap:anywhere; }
 .rec td.v a { color:var(--accent-2); text-decoration:none; }
 .rec td.v a:hover { text-decoration:underline; }
+/* On phones, stack key above value so long mono values get the full width. */
+@media (max-width:640px) {
+  .rec, .rec tbody, .rec tr, .rec td { display:block; width:auto; }
+  .rec tr { padding:9px var(--s4); }
+  .rec td { padding:0; }
+  .rec td.k { margin-bottom:3px; }
+  .rec td.v { font-size:13.5px; }
+}
 .pivot { margin-left:8px; font-size:10px; font-family:var(--mono); color:var(--accent-2);
   border:1px solid var(--accent-line); border-radius:var(--pill); padding:1px 7px; cursor:pointer;
   background:var(--accent-soft); }

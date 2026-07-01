@@ -59,8 +59,14 @@ class EmailExposure(BaseModule):
             res.add("Exposure", "not found in public breach lists", Confidence.CONFIRMED)
             return res
 
-        for name, src in sorted(breaches.items()):
+        # Cap the visible list so the card stays readable (placeholder emails can
+        # appear in hundreds of test lists); summarise the remainder.
+        CAP = 40
+        items = sorted(breaches.items())
+        for name, src in items[:CAP]:
             res.add(name, f"listed · {src}", Confidence.LIKELY)
+        if len(items) > CAP:
+            res.add(f"+{len(items) - CAP} more breach lists", "not shown", Confidence.INFO)
         res.summary = f"Appears in {len(breaches)} public breach list(s)"
         res.extra["breach_count"] = len(breaches)
         # Actionable, defensive guidance — the point of the check.
