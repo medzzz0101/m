@@ -42,31 +42,62 @@ from ._common import host_of
 #   unreliable    : True if even this heuristic is shaky (report as INFO)
 # ---------------------------------------------------------------------------
 SITES: list[dict] = [
-    {"name": "GitHub",        "url": "https://github.com/{}",                 "method": "status"},
-    {"name": "GitLab",        "url": "https://gitlab.com/{}",                 "method": "status"},
-    {"name": "Reddit",        "url": "https://www.reddit.com/user/{}/about.json", "method": "status"},
-    {"name": "Twitter/X",     "url": "https://x.com/{}",                      "method": "string_match", "absent": "This account doesn’t exist", "unreliable": True},
-    {"name": "Instagram",     "url": "https://www.instagram.com/{}/",         "method": "status", "unreliable": True},
-    {"name": "TikTok",        "url": "https://www.tiktok.com/@{}",            "method": "string_match", "absent": "Couldn't find this account"},
-    {"name": "Telegram",      "url": "https://t.me/{}",                       "method": "string_match", "absent": "tgme_page_additional"},
-    {"name": "Keybase",       "url": "https://keybase.io/{}",                 "method": "status"},
-    {"name": "Medium",        "url": "https://medium.com/@{}",               "method": "status"},
-    {"name": "Dev.to",        "url": "https://dev.to/{}",                     "method": "status"},
-    {"name": "Pastebin",      "url": "https://pastebin.com/u/{}",            "method": "status"},
-    {"name": "HackerNews",    "url": "https://news.ycombinator.com/user?id={}", "method": "string_match", "absent": "No such user."},
-    {"name": "Steam",         "url": "https://steamcommunity.com/id/{}",      "method": "string_match", "absent": "The specified profile could not be found"},
-    {"name": "Twitch",        "url": "https://www.twitch.tv/{}",             "method": "status", "unreliable": True},
-    {"name": "Patreon",       "url": "https://www.patreon.com/{}",           "method": "status"},
-    {"name": "Behance",       "url": "https://www.behance.net/{}",           "method": "status"},
-    {"name": "Dribbble",      "url": "https://dribbble.com/{}",              "method": "status"},
-    {"name": "SoundCloud",    "url": "https://soundcloud.com/{}",            "method": "status"},
-    {"name": "Vimeo",         "url": "https://vimeo.com/{}",                 "method": "status"},
-    {"name": "Flickr",        "url": "https://www.flickr.com/people/{}",     "method": "status"},
-    {"name": "About.me",      "url": "https://about.me/{}",                  "method": "status"},
-    {"name": "Replit",        "url": "https://replit.com/@{}",              "method": "status"},
-    {"name": "PyPI",          "url": "https://pypi.org/user/{}/",           "method": "status"},
-    {"name": "npm",           "url": "https://www.npmjs.com/~{}",           "method": "status"},
-    {"name": "Mastodon(.social)", "url": "https://mastodon.social/@{}",     "method": "status"},
+    # ---- Dev / tech ----
+    {"name": "GitHub",        "url": "https://github.com/{}",                 "method": "status", "cat": "dev"},
+    {"name": "GitLab",        "url": "https://gitlab.com/{}",                 "method": "status", "cat": "dev"},
+    {"name": "Keybase",       "url": "https://keybase.io/{}",                 "method": "status", "cat": "dev"},
+    {"name": "Dev.to",        "url": "https://dev.to/{}",                     "method": "status", "cat": "dev"},
+    {"name": "Replit",        "url": "https://replit.com/@{}",               "method": "status", "cat": "dev"},
+    {"name": "PyPI",          "url": "https://pypi.org/user/{}/",            "method": "status", "cat": "dev"},
+    {"name": "npm",           "url": "https://www.npmjs.com/~{}",            "method": "status", "cat": "dev"},
+    {"name": "Docker Hub",    "url": "https://hub.docker.com/u/{}",          "method": "status", "cat": "dev"},
+    {"name": "HackerNews",    "url": "https://news.ycombinator.com/user?id={}", "method": "string_match", "absent": "No such user.", "cat": "dev"},
+    {"name": "CodePen",       "url": "https://codepen.io/{}",                "method": "status", "cat": "dev"},
+    {"name": "Kaggle",        "url": "https://www.kaggle.com/{}",            "method": "status", "cat": "dev"},
+    {"name": "Hackerone",     "url": "https://hackerone.com/{}",             "method": "status", "cat": "dev"},
+    {"name": "Bitbucket",     "url": "https://bitbucket.org/{}/",            "method": "status", "cat": "dev"},
+    # ---- Social ----
+    {"name": "Twitter/X",     "url": "https://nitter.net/{}",                "method": "string_match", "absent": "User not found", "cat": "social", "unreliable": True},
+    {"name": "Instagram",     "url": "https://www.instagram.com/{}/",         "method": "status", "cat": "social", "unreliable": True},
+    {"name": "TikTok",        "url": "https://www.tiktok.com/@{}",           "method": "string_match", "absent": "Couldn't find this account", "cat": "social"},
+    {"name": "Telegram",      "url": "https://t.me/{}",                      "method": "string_match", "absent": "tgme_page_additional", "cat": "social"},
+    {"name": "Facebook",      "url": "https://www.facebook.com/{}",          "method": "status", "cat": "social", "unreliable": True},
+    {"name": "Threads",       "url": "https://www.threads.net/@{}",          "method": "status", "cat": "social", "unreliable": True},
+    {"name": "Snapchat",      "url": "https://www.snapchat.com/add/{}",      "method": "string_match", "absent": "Sorry! We couldn", "cat": "social"},
+    {"name": "Reddit",        "url": "https://www.reddit.com/user/{}/about.json", "method": "status", "cat": "social"},
+    {"name": "Mastodon",      "url": "https://mastodon.social/@{}",          "method": "status", "cat": "social"},
+    {"name": "Bluesky",       "url": "https://bsky.app/profile/{}.bsky.social", "method": "status", "cat": "social", "unreliable": True},
+    {"name": "VK",            "url": "https://vk.com/{}",                    "method": "string_match", "absent": "page is not found", "cat": "social"},
+    {"name": "Linktree",      "url": "https://linktr.ee/{}",                 "method": "string_match", "absent": "the page you", "cat": "social"},
+    {"name": "About.me",      "url": "https://about.me/{}",                  "method": "status", "cat": "social"},
+    {"name": "Gravatar",      "url": "https://gravatar.com/{}",              "method": "status", "cat": "social"},
+    # ---- Media / creative ----
+    {"name": "YouTube",       "url": "https://www.youtube.com/@{}",          "method": "string_match", "absent": "This page isn", "cat": "media"},
+    {"name": "Twitch",        "url": "https://m.twitch.tv/{}",               "method": "string_match", "absent": "Sorry. Unless you", "cat": "media", "unreliable": True},
+    {"name": "SoundCloud",    "url": "https://soundcloud.com/{}",            "method": "status", "cat": "media"},
+    {"name": "Vimeo",         "url": "https://vimeo.com/{}",                 "method": "status", "cat": "media"},
+    {"name": "Flickr",        "url": "https://www.flickr.com/people/{}",     "method": "status", "cat": "media"},
+    {"name": "Behance",       "url": "https://www.behance.net/{}",           "method": "status", "cat": "media"},
+    {"name": "Dribbble",      "url": "https://dribbble.com/{}",              "method": "status", "cat": "media"},
+    {"name": "DeviantArt",    "url": "https://www.deviantart.com/{}",        "method": "status", "cat": "media"},
+    {"name": "Spotify",       "url": "https://open.spotify.com/user/{}",     "method": "status", "cat": "media"},
+    {"name": "Bandcamp",      "url": "https://bandcamp.com/{}",              "method": "status", "cat": "media"},
+    {"name": "Patreon",       "url": "https://www.patreon.com/{}",           "method": "status", "cat": "media"},
+    {"name": "Medium",        "url": "https://medium.com/@{}",              "method": "status", "cat": "media"},
+    {"name": "Pinterest",     "url": "https://www.pinterest.com/{}/",        "method": "status", "cat": "media", "unreliable": True},
+    # ---- Gaming / community ----
+    {"name": "Steam",         "url": "https://steamcommunity.com/id/{}",     "method": "string_match", "absent": "The specified profile could not be found", "cat": "gaming"},
+    {"name": "Chess.com",     "url": "https://www.chess.com/member/{}",      "method": "status", "cat": "gaming"},
+    {"name": "Lichess",       "url": "https://lichess.org/@/{}",             "method": "status", "cat": "gaming"},
+    {"name": "Roblox",        "url": "https://www.roblox.com/user.aspx?username={}", "method": "string_match", "absent": "Page cannot be found", "cat": "gaming"},
+    {"name": "Xbox Gamertag", "url": "https://xboxgamertag.com/search/{}",   "method": "string_match", "absent": "No user found", "cat": "gaming"},
+    # ---- Shops / misc ----
+    {"name": "Pastebin",      "url": "https://pastebin.com/u/{}",            "method": "status", "cat": "misc"},
+    {"name": "Ko-fi",         "url": "https://ko-fi.com/{}",                 "method": "status", "cat": "misc"},
+    {"name": "BuyMeACoffee",  "url": "https://www.buymeacoffee.com/{}",      "method": "status", "cat": "misc"},
+    {"name": "Product Hunt",  "url": "https://www.producthunt.com/@{}",      "method": "status", "cat": "misc"},
+    {"name": "Trello",        "url": "https://trello.com/{}",                "method": "status", "cat": "misc", "unreliable": True},
+    {"name": "Wattpad",       "url": "https://www.wattpad.com/user/{}",      "method": "status", "cat": "misc"},
 ]
 
 
@@ -74,13 +105,14 @@ class UsernameModule(BaseModule):
     key = "username"
     name = "Username presence"
     category = Category.IDENTITY
-    subtitle = "Is the handle taken? (~25 sites)"
+    subtitle = "Handle across ~50 platforms"
     accepts = (InputType.USERNAME,)
     needs_network = True
     description = (
-        "Checks whether a handle is REGISTERED across ~25 public platforms "
-        "using per-site status-code OR not-found-string logic. Presence only — "
-        "an existing handle is NOT proof of identity and is flagged low-confidence."
+        "Checks whether a handle is REGISTERED across ~50 public platforms "
+        "(social, dev, media, gaming) using per-site status-code OR "
+        "not-found-string logic. Presence only — an existing handle is NOT proof "
+        "of identity and is flagged low-confidence."
     )
 
     async def _check(self, site: dict, username: str, ctx: RunContext) -> dict:
