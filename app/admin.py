@@ -23,7 +23,9 @@ _DATA.mkdir(exist_ok=True)
 _KEYS_FILE = _DATA / "admin_keys.json"
 _LOG_FILE = _DATA / "redemptions.json"
 
-ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "limbo-owner-CHANGE-ME")
+_CODE_DEFAULT_TOKEN = "limbo-owner-b5b58ce1a2dbb734"
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", _CODE_DEFAULT_TOKEN)
+_USING_CODE_TOKEN = ADMIN_TOKEN == _CODE_DEFAULT_TOKEN
 
 
 def check_token(token: str) -> bool:
@@ -96,4 +98,4 @@ def state() -> dict:
             for c, t in sorted(keys.items(), key=lambda x: x[1])]
     log = _load(_LOG_FILE, [])[-50:][::-1]
     return {"keys": rows, "redemptions": log, "total_redeems": sum(counts.values()),
-            "token_is_default": ADMIN_TOKEN == "limbo-owner-CHANGE-ME"}
+            "token_is_default": _USING_CODE_TOKEN}

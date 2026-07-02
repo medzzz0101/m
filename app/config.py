@@ -37,7 +37,7 @@ PAYMENTS_LIVE = bool(PAY_ADDRESS_BTC or PAY_ADDRESS_ETH or PAYPAL_ME)
 # Format in env:  LICENSE_KEYS="CODE1:master,CODE2:elite,CODE3:premium"
 # Each code unlocks its tier for anyone who enters it, with unlimited uses.
 # A default set is seeded so you have keys to hand out immediately — CHANGE THEM.
-_DEFAULT_KEYS = "LIMBO-MASTER-9F3K:master,LIMBO-ELITE-7Q2X:elite,LIMBO-PREMIUM-4T8M:premium"
+_DEFAULT_KEYS = "LIMBO-MASTER-K0VFN:master,LIMBO-ELITE-613HM:elite,LIMBO-PREMIUM-Y1D3M:premium"
 
 def license_keys() -> dict[str, str]:
     raw = os.environ.get("LICENSE_KEYS", _DEFAULT_KEYS)
