@@ -162,7 +162,8 @@ function showHome(filterCat = null) {
     const list = (state.byCat[cat] || []).filter((m) => m.inputs.length || m.id === "password_kanon");
     if (!list.length) continue;
     const head = el("div", "section-h");
-    head.innerHTML = `<h2>${CAT_META[cat].label}</h2><span class="rule"></span><span class="hint">${list.length} modules</span>`;
+    head.innerHTML = `<span class="section-ico" style="color:${CAT_META[cat].color};background:${CAT_META[cat].color}1f">${catSvg(cat)}</span>
+      <h2>${CAT_META[cat].label}</h2><span class="rule"></span><span class="hint">${list.length} modules</span>`;
     c.appendChild(head);
     const grid = el("div", "grid");
     for (const mod of list) grid.appendChild(moduleTile(mod));
@@ -232,14 +233,15 @@ function moduleTile(mod) {
   const t = el("div", "mod");
   t.style.setProperty("--cat", CAT_META[mod.category].color);
   const locked = tierIndex(mod.tier) > tierIndex(state.plan);
+  const cc = CAT_META[mod.category].color;
   t.innerHTML = `
     <div class="mod-top">
-      <span class="mod-ico" style="color:${CAT_META[mod.category].color}">${catSvg(mod.category)}</span>
+      <span class="mod-ico" style="color:${cc};background:${cc}1a;border-color:${cc}33">${catSvg(mod.category)}</span>
       <span class="mod-name">${esc(mod.name)}</span>
       <span class="mod-tier ${locked ? "locked" : ""}">${locked ? "🔒 " : ""}${mod.tier}</span>
     </div>
     <div class="mod-desc">${esc(mod.description)}</div>
-    <div class="mod-cat">${mod.category}</div>`;
+    <div class="mod-go">Run <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>`;
   t.onclick = () => {
     if (mod.id === "password_kanon") return openPwCheck();
     if (locked) return showPricing();
