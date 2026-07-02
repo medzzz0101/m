@@ -585,32 +585,50 @@ function mapTile(point) {
 }
 
 // ---------------------------------------------------------------- PRICING
+const TIER_FEATURES = {
+  base:    ["Username presence · 40+ platforms", "DNS · WHOIS/RDAP · IP geo", "Email breach names · password k-anon", "EXIF/GPS · geolocation checklist"],
+  premium: ["Everything in Base", "Public profiles: Telegram · Discord · Steam", "Subdomains (CT) · TLS · tech fingerprint", "Self-exposure score · phone metadata"],
+  elite:   ["Everything in Premium", "Threat feeds · GreyNoise · URLhaus", "Reverse-IP co-hosting · Spamhaus", "Image ELA forensics · Keybase proofs"],
+  master:  ["Everything in Elite", "All 63 modules unlocked", "Max concurrency · priority runs", "Full entity graph + report export"],
+};
 function showPricing() {
   state.view = "pricing";
   $("#topbar-title").textContent = "Plans";
   syncTabs("pricing");
   const c = $("#content");
   c.className = "content view";
-  c.innerHTML = `<div class="section-h"><h2>Plans</h2><span class="rule"></span><span class="hint">crypto & PayPal · on-chain confirmation</span></div>`;
-  const grid = el("div", "plans");
-  for (const t of state.tiers) {
+  const all = state.byCat ? Object.values(state.byCat).flat() : [];
+  c.innerHTML = `
+    <div class="price-hero">
+      <div class="price-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+      <h1 class="price-title">Go deeper into the <span class="grad">signal</span>.</h1>
+      <p class="price-sub">Unlock more of the console. Pay in BTC, ETH or USDT — confirmed directly on-chain, no processor — or PayPal.</p>
+    </div>
+    <div class="plans" id="plans-grid"></div>
+    <div class="price-note">All plans use public data only. Cancel anytime — it's your self-hosted instance.</div>`;
+  const grid = $("#plans-grid");
+  state.tiers.forEach((t, i) => {
     const cur = t.id === state.plan;
-    const p = el("div", "plan" + (cur ? " cur" : ""));
-    const n = (state.byCat && Object.values(state.byCat).flat().filter((m) => tierIndex(m.tier) <= tierIndex(t.id)).length) || 0;
+    const featured = t.id === "elite";
+    const n = all.filter((m) => tierIndex(m.tier) <= tierIndex(t.id)).length;
+    const p = el("div", "plan" + (cur ? " cur" : "") + (featured ? " featured" : ""));
+    p.style.animationDelay = i * 70 + "ms";
     p.innerHTML = `
+      ${featured ? `<div class="plan-tag">Most popular</div>` : ""}
       <div class="plan-name">${t.name}</div>
-      <div class="plan-price">$${t.price_usd}<small>/mo</small></div>
+      <div class="plan-price"><span class="cur-sym">$</span><span class="cur-val" data-count="${t.price_usd}">0</span><small>/mo</small></div>
       <div class="plan-blurb">${esc(t.blurb)}</div>
-      <div class="plan-blurb" style="color:var(--text-3)">${n} modules unlocked</div>
-      <button class="plan-btn">${cur ? "Current plan" : (t.price_usd === 0 ? "Switch to free" : "Upgrade")}</button>`;
+      <ul class="plan-feats">${(TIER_FEATURES[t.id] || []).map((f) => `<li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>${esc(f)}</li>`).join("")}</ul>
+      <div class="plan-count">${n} modules unlocked</div>
+      <button class="plan-btn">${cur ? "✓ Current plan" : (t.price_usd === 0 ? "Switch to free" : `Get ${t.name}`)}</button>`;
     p.querySelector(".plan-btn").onclick = () => {
       if (cur) return;
       if (t.price_usd === 0) { setPlan("base"); toast("Switched to Base"); showPricing(); }
       else openCheckout(t);
     };
     grid.appendChild(p);
-  }
-  c.appendChild(grid);
+  });
+  requestAnimationFrame(() => $$(".cur-val[data-count]", c).forEach(countUp));
 }
 
 // ---------------------------------------------------------------- overlays
@@ -812,8 +830,10 @@ function exportReport(res) {
 
 // ---------------------------------------------------------------- helpers
 function emptyState(title, sub) {
-  return `<div class="card"><div class="card-body" style="display:block"><div style="text-align:center;padding:48px 16px;color:var(--text-3)">
-    <div style="font-size:16px;color:var(--text-2);margin-bottom:6px">${esc(title)}</div><div style="font-size:13px">${esc(sub)}</div></div></div></div>`;
+  return `<div class="empty">
+    <div class="empty-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+    <div class="empty-title">${esc(title)}</div>
+    <div class="empty-sub">${esc(sub)}</div></div>`;
 }
 function tierIndex(t) { const order = ["base", "premium", "elite", "master"]; return order.indexOf(t) < 0 ? 0 : order.indexOf(t); }
 function setPlan(p) { state.plan = p; localStorage.setItem("plan", p); renderNav(); }
