@@ -16,6 +16,11 @@
   padding:var(--s5); position:relative; }
 .command-eyebrow { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3);
   font-family:var(--mono); margin-bottom:var(--s3); position:relative; }
+.command-title { font-family:var(--display); font-size:26px; font-weight:600; letter-spacing:-.01em;
+  margin:0 0 var(--s2); color:var(--text); line-height:1.1; }
+.command-title .tt { color:var(--accent); }
+.command-lede { font-size:13.5px; color:var(--text-2); line-height:1.55; margin:0 0 var(--s4); max-width:560px; }
+@media (max-width:640px){ .command-title { font-size:22px; } }
 .command-row { display:flex; gap:var(--s3); align-items:stretch; position:relative; }
 .input-wrap { flex:1; display:flex; align-items:center; gap:var(--s3); background:var(--bg);
   border:1px solid var(--line-strong); border-radius:var(--r2); padding:0 var(--s4);

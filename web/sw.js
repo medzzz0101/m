@@ -1,7 +1,7 @@
 /* sw.js — a minimal, safe service worker for the PWA.
    Strategy: network-first for everything, falling back to cache when offline so
    the shell still opens. API calls are never cached (always live). */
-const CACHE = "limbo-v7";
+const CACHE = "limbo-v8";
 const SHELL = [
   "/", "/static/css/tokens.css", "/static/css/layout.css",
   "/static/css/components.css", "/static/js/app.js", "/static/js/graph.js",

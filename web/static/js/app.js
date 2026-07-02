@@ -179,11 +179,13 @@ function showHome(filterCat = null) {
 function commandBar() {
   const wrap = el("div", "command");
   wrap.innerHTML = `
-    <div class="command-eyebrow">public-signal intelligence</div>
+    <div class="command-eyebrow">people · public-footprint osint</div>
+    <h1 class="command-title">Map anyone's <span class="tt">public</span> footprint.</h1>
+    <p class="command-lede">Give a username, handle or email — see where a person is publicly present online and how exposed they are. Public data only.</p>
     <div class="command-row">
       <div class="input-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-        <input id="target" placeholder="username, email, domain, IP, phone, hash…" autocomplete="off" spellcheck="false">
+        <input id="target" placeholder="@username, social handle or email…" autocomplete="off" spellcheck="false">
         <span class="type-pill" id="type-pill">—</span>
       </div>
       <button class="run-btn" id="run-btn">
@@ -198,18 +200,18 @@ function commandBar() {
     </div>
     <div class="examples">
       <span class="ex-label">try</span>
-      ${["octocat", "github.com", "1.1.1.1", "someone@example.com"].map((e) => `<button class="ex" data-ex="${esc(e)}">${esc(e)}</button>`).join("")}
+      ${["octocat", "torvalds", "jack", "someone@example.com"].map((e) => `<button class="ex" data-ex="${esc(e)}">${esc(e)}</button>`).join("")}
     </div>`;
   return wrap;
 }
 
 function statStrip() {
   const s = el("div", "stats");
-  const nCat = CAT_ORDER.filter((c) => (state.byCat[c] || []).length).length;
+  const social = (state.byCat.social || []).length + (state.byCat.identity || []).length;
   const cells = [
     [state.modules.length, "Modules"],
-    [nCat, "Domains"],
-    [state.tiers.length, "Plans"],
+    [social, "People signals"],
+    [40, "Platforms"],
     ["100%", "Public data"],
   ];
   s.innerHTML = cells.map(([n, l]) => {
