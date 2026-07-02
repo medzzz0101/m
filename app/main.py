@@ -157,7 +157,7 @@ async def run_stream(request: Request):
         # related domains) and re-run a small, fast recon set on each — turning a
         # flat scan into a real multi-hop attack-surface graph. Purely public
         # infrastructure OSINT; never person-level.
-        est = len(mods) + (18 if deep and it.value != "image" else 0)
+        est = len(mods) + (40 if deep and it.value != "image" else 0)
         yield _sse("meta", {"target": target, "input_type": it.value,
                             "total": est, "skipped": skipped, "deep": deep})
 
@@ -166,19 +166,27 @@ async def run_stream(request: Request):
                 all_mods.append(payload); ingest(payload)
                 yield _sse("module", payload)
 
+        # Recursive multi-hop expansion: hop 1 follows the target's discovered
+        # infra, hop 2 follows what THAT uncovered — a genuinely deep, bounded
+        # attack-surface crawl. Each hop widens the graph, all public infra OSINT.
         if deep and it.value != "image":
-            for ptarget, pit in _pick_pivots(graph, seen_targets):
-                seen_targets.add(ptarget.lower())
-                pmods = [registry.get(mid) for mid in _DEEP_SET.get(pit.value, [])]
-                pmods = [m for m in pmods if m and _allowed(m, plan)]
-                if not pmods:
-                    continue
-                pctx = RunContext(target=ptarget, input_type=pit, deep=False)
-                async for kind, payload in orchestrator.run_stream(pmods, pctx):
-                    if kind == "module":
-                        payload["pivot_from"] = ptarget
-                        all_mods.append(payload); ingest(payload)
-                        yield _sse("module", payload)
+            for hop, limit in enumerate((6, 3), start=1):
+                pivots = _pick_pivots(graph, seen_targets, limit)
+                if not pivots:
+                    break
+                for ptarget, pit in pivots:
+                    seen_targets.add(ptarget.lower())
+                    pmods = [registry.get(mid) for mid in _DEEP_SET.get(pit.value, [])]
+                    pmods = [m for m in pmods if m and _allowed(m, plan)]
+                    if not pmods:
+                        continue
+                    pctx = RunContext(target=ptarget, input_type=pit, deep=False)
+                    async for kind, payload in orchestrator.run_stream(pmods, pctx):
+                        if kind == "module":
+                            payload["pivot_from"] = ptarget
+                            payload["hop"] = hop
+                            all_mods.append(payload); ingest(payload)
+                            yield _sse("module", payload)
 
         ok = sum(1 for d in all_mods if d["ok"])
         gd = graph.to_dict()
