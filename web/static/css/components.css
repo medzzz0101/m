@@ -28,9 +28,9 @@
 .type-pill { font-size:11px; font-family:var(--mono); color:var(--accent-2); background:var(--accent-soft);
   border:1px solid var(--accent-line); border-radius:var(--pill); padding:3px 10px; white-space:nowrap; }
 .run-btn { display:flex; align-items:center; gap:8px; padding:0 var(--s5); border:1px solid transparent; cursor:pointer;
-  border-radius:var(--r2); background:var(--accent); color:#0c0a1e; font-weight:600; font-size:14.5px;
-  transition:background var(--t-fast); white-space:nowrap; }
-.run-btn:hover { background:var(--accent-2); }
+  border-radius:var(--r2); background:var(--cta); color:var(--cta-ink); font-weight:600; font-size:14px;
+  letter-spacing:.2px; transition:background var(--t-fast); white-space:nowrap; }
+.run-btn:hover { background:var(--cta-2); }
 .run-btn:active { transform:translateY(0); }
 .run-btn svg { width:18px; height:18px; }
 
@@ -260,8 +260,8 @@
 .plan-btn { padding:12px; border-radius:var(--r1); border:1px solid var(--accent-line); background:var(--accent-soft);
   color:var(--accent-2); font-weight:650; cursor:pointer; font-size:13.5px; transition:all var(--t-fast); }
 .plan-btn:hover { background:var(--accent-line); color:#04121a; }
-.plan.featured .plan-btn { background:var(--accent); color:#0c0a1e; border-color:transparent; }
-.plan.featured .plan-btn:hover { background:var(--accent-2); }
+.plan.featured .plan-btn { background:var(--cta); color:var(--cta-ink); border-color:transparent; }
+.plan.featured .plan-btn:hover { background:var(--cta-2); }
 .plan.cur .plan-btn { background:var(--surface-2); color:var(--text-3); border-color:var(--line); cursor:default; }
 
 /* checkout / pay */
@@ -288,9 +288,9 @@
 .pw-result.pwned { background:var(--bad-s); color:var(--bad); }
 
 /* buttons */
-.btn { padding:11px var(--s5); border-radius:var(--r2); border:none; cursor:pointer; font-weight:600; font-size:14px;
-  background:var(--accent); color:#0c0a1e; transition:background var(--t-fast); }
-.btn:hover { background:var(--accent-2); }
+.btn { padding:10px var(--s5); border-radius:var(--r2); border:none; cursor:pointer; font-weight:600; font-size:14px;
+  letter-spacing:.2px; background:var(--cta); color:var(--cta-ink); transition:background var(--t-fast); }
+.btn:hover { background:var(--cta-2); }
 .btn.ghost { background:var(--surface-2); color:var(--text); border:1px solid var(--line); box-shadow:none; }
 .full { width:100%; }
 

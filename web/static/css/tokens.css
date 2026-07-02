@@ -4,29 +4,35 @@
    accent used sparingly. If a glow or shadow is visible, it's already too much.
    ========================================================================== */
 :root {
-  /* Surface ladder — near-black, barely-separated steps (Raycast-style). */
-  --bg:        #08090b;   /* app canvas */
-  --bg-2:      #0a0b0e;   /* recessed */
-  --surface:   #0e1013;   /* cards */
-  --surface-2: #15171b;   /* hover / elevated */
-  --surface-3: #1c1f24;   /* active */
-  --hover:     #131519;
+  /* Surface ladder — exact Raycast steps: near-black, barely separated. */
+  --bg:        #07080a;   /* canvas */
+  --bg-2:      #0a0a0b;   /* recessed */
+  --surface:   #0d0d0d;   /* surface */
+  --surface-2: #101111;   /* elevated / hover */
+  --surface-3: #161617;   /* active */
+  --card:      #121212;   /* cards */
+  --hover:     #101111;
 
-  /* Hairlines — subliminal. Separation comes from surface steps, not borders. */
-  --line:        rgba(255,255,255,0.06);
-  --line-strong: rgba(255,255,255,0.10);
+  /* Hairlines — solid #242728 like Raycast; separation from surface steps. */
+  --line:        #1c1d1f;
+  --line-strong: #262829;
 
-  /* Text — high-legibility neutral ramp, slight positive tracking applied in use. */
-  --text:   #ececee;
-  --text-2: #9ea1a9;
-  --text-3: #64686f;
+  /* Text ramp (Raycast): Ink / Mute / Ash. */
+  --text:   #f4f4f6;
+  --text-2: #9c9c9d;
+  --text-3: #6a6b6c;
 
-  /* THE accent — one restrained indigo-violet. Used only for active/primary/focus. */
-  --accent:      #7b6cf0;
-  --accent-2:    #988bff;
-  --accent-soft: rgba(123,108,240,0.12);
-  --accent-line: rgba(123,108,240,0.30);
-  --accent-glow: rgba(123,108,240,0.16);
+  /* Primary CTA = near-white pill with dark text (the signature pro move). */
+  --cta:      #f4f4f6;
+  --cta-2:    #ffffff;
+  --cta-ink:  #0b0b0c;
+
+  /* THE accent — one restrained indigo-violet, only for active/focus/links. */
+  --accent:      #8b7bf7;
+  --accent-2:    #a495ff;
+  --accent-soft: rgba(139,123,247,0.13);
+  --accent-line: rgba(139,123,247,0.32);
+  --accent-glow: rgba(139,123,247,0.16);
   /* Secondary hue kept for the celebratory moment only — not everyday UI. */
   --accent2:      #e15c9e;
   --accent2-2:    #ef86b8;
@@ -64,10 +70,11 @@
   /* Tight radii (Linear/Raycast: 6–12px). */
   --r1:6px; --r2:8px; --r3:12px; --pill:999px;
 
-  /* Shadows — barely there (Linear ships ~4% opacity). */
-  --shadow:     0 1px 2px rgba(0,0,0,0.30);
-  --shadow-2:   0 8px 24px rgba(0,0,0,0.28);
-  --shadow-pop: 0 16px 48px rgba(0,0,0,0.44);
+  /* Shadows — Raycast ships NONE on surfaces; elevation is the surface ladder.
+     Only floating overlays (modals) get a soft one. */
+  --shadow:     none;
+  --shadow-2:   none;
+  --shadow-pop: 0 16px 48px rgba(0,0,0,0.55);
 
   /* Motion — quick and calm. */
   --t-fast: 120ms cubic-bezier(.4,0,.2,1);
