@@ -240,7 +240,7 @@ function moduleTile(mod) {
   const cc = CAT_META[mod.category].color;
   t.innerHTML = `
     <div class="mod-top">
-      <span class="mod-ico" style="color:${cc};background:${cc}1a;border-color:${cc}33">${catSvg(mod.category)}</span>
+      <span class="mod-ico" style="color:${cc}">${catSvg(mod.category)}</span>
       <span class="mod-name">${esc(mod.name)}</span>
       <span class="mod-tier ${locked ? "locked" : ""}">${locked ? "🔒 " : ""}${mod.tier}</span>
     </div>

@@ -1,84 +1,82 @@
 /* ==========================================================================
-   tokens.css — the entire design language as variables.
-   LATTICE look: deep near-black console, ONE restrained violet accent, crisp
-   hairline borders, monospace for data. Change a value here → the whole app
-   re-themes. Both mobile and desktop read from these same tokens.
+   tokens.css — LIMBO design system, rebuilt on the Linear / Vercel / Raycast
+   principles: intentional restraint, a systematic scale, hairline borders, one
+   accent used sparingly. If a glow or shadow is visible, it's already too much.
    ========================================================================== */
 :root {
-  /* Surfaces — near-pure black void ("limbo") */
-  --bg:        #030305;
-  --bg-2:      #070810;
-  --surface:   #0b0d16;
-  --surface-2: #11141f;
-  --surface-3: #191d2b;
-  --hover:     #161a26;
+  /* Surface ladder — near-black, barely-separated steps (Raycast-style). */
+  --bg:        #08090b;   /* app canvas */
+  --bg-2:      #0a0b0e;   /* recessed */
+  --surface:   #0e1013;   /* cards */
+  --surface-2: #15171b;   /* hover / elevated */
+  --surface-3: #1c1f24;   /* active */
+  --hover:     #131519;
 
-  /* Hairlines */
-  --line:        rgba(255,255,255,0.07);
-  --line-strong: rgba(120,240,230,0.16);
+  /* Hairlines — subliminal. Separation comes from surface steps, not borders. */
+  --line:        rgba(255,255,255,0.06);
+  --line-strong: rgba(255,255,255,0.10);
 
-  /* Text */
-  --text:   #eaf6f6;
-  --text-2: #92a2ad;
-  --text-3: #566270;
+  /* Text — high-legibility neutral ramp, slight positive tracking applied in use. */
+  --text:   #ececee;
+  --text-2: #9ea1a9;
+  --text-3: #64686f;
 
-  /* THE accent — electric cyan */
-  --accent:      #1ee6cf;
-  --accent-2:    #5cf5e4;
-  --accent-soft: rgba(30,230,207,0.10);
-  --accent-line: rgba(30,230,207,0.34);
-  --accent-glow: rgba(30,230,207,0.30);
+  /* THE accent — one restrained indigo-violet. Used only for active/primary/focus. */
+  --accent:      #7b6cf0;
+  --accent-2:    #988bff;
+  --accent-soft: rgba(123,108,240,0.12);
+  --accent-line: rgba(123,108,240,0.30);
+  --accent-glow: rgba(123,108,240,0.16);
+  /* Secondary hue kept for the celebratory moment only — not everyday UI. */
+  --accent2:      #e15c9e;
+  --accent2-2:    #ef86b8;
+  --accent2-soft: rgba(225,92,158,0.12);
+  --accent2-glow: rgba(225,92,158,0.18);
 
-  /* Secondary accent — hot magenta (used for gradients / pops) */
-  --accent2:      #ff5c9e;
-  --accent2-2:    #ff87b8;
-  --accent2-soft: rgba(255,92,158,0.12);
-  --accent2-glow: rgba(255,92,158,0.30);
+  /* Category hues — muted; rendered as small dots/ticks, never fills. */
+  --c-social:         #7b6cf0;
+  --c-identity:       #d071a8;
+  --c-infrastructure: #5b8def;
+  --c-image:          #46b98a;
+  --c-intel:          #cf9e52;
 
-  /* Category hues (sidebar + card accents) */
-  --c-social:         #1ee6cf;
-  --c-identity:       #ff5c9e;
-  --c-infrastructure: #3aa0ff;
-  --c-image:          #55e08a;
-  --c-intel:          #ffcf5c;
-
-  /* Confidence / status */
-  --confirmed: #37e0a4; --confirmed-s: rgba(55,224,164,0.13);
-  --likely:    #3aa0ff; --likely-s:    rgba(58,160,255,0.13);
-  --possible:  #ffcf5c; --possible-s:  rgba(255,207,92,0.13);
-  --info:      #7b8494; --info-s:      rgba(123,132,148,0.10);
-  --bad:       #ff7a7a; --bad-s:       rgba(255,122,122,0.13);
+  /* Confidence / status — desaturated, never neon. */
+  --confirmed: #46b98a; --confirmed-s: rgba(70,185,138,0.12);
+  --likely:    #5b8def; --likely-s:    rgba(91,141,239,0.12);
+  --possible:  #cf9e52; --possible-s:  rgba(207,158,82,0.12);
+  --info:      #7b8494; --info-s:      rgba(123,132,148,0.09);
+  --bad:       #e06a6a; --bad-s:       rgba(224,106,106,0.12);
 
   /* Graph node hues */
-  --n-username:#1ee6cf; --n-profile:#5cf5e4; --n-email:#ffcf5c;
-  --n-domain:#3aa0ff;   --n-subdomain:#7fc0ff; --n-ip:#55e08a;
-  --n-geo:#ff5c9e;      --n-tech:#ff87b8;      --n-org:#ffffff;
-  --n-url:#c0c6d0;      --n-btc:#f7931a;       --n-default:#6d6b7e;
+  --n-username:#7b6cf0; --n-profile:#988bff; --n-email:#cf9e52;
+  --n-domain:#5b8def;   --n-subdomain:#86aef5; --n-ip:#46b98a;
+  --n-geo:#d071a8;      --n-tech:#cf9e52;      --n-org:#ececee;
+  --n-url:#9ea1a9;      --n-btc:#d99a3a;       --n-default:#5a5e66;
 
-  /* Type — Space Grotesk gives the UI a distinctive, non-generic voice;
-     JetBrains Mono carries all the data readouts. */
+  /* Type — Space Grotesk display + Inter-like system body + mono for data. */
   --font: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
   --display: "Space Grotesk", var(--font);
 
-  /* Space scale */
-  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;
+  /* Systematic spacing scale (4px base — never mix off-scale values). */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px;
 
-  /* Radii */
-  --r1:8px; --r2:12px; --r3:16px; --pill:999px;
+  /* Tight radii (Linear/Raycast: 6–12px). */
+  --r1:6px; --r2:8px; --r3:12px; --pill:999px;
 
-  /* Shadow */
-  --shadow: 0 12px 40px rgba(0,0,0,0.5);
-  --shadow-pop: 0 24px 70px rgba(0,0,0,0.65);
+  /* Shadows — barely there (Linear ships ~4% opacity). */
+  --shadow:     0 1px 2px rgba(0,0,0,0.30);
+  --shadow-2:   0 8px 24px rgba(0,0,0,0.28);
+  --shadow-pop: 0 16px 48px rgba(0,0,0,0.44);
 
-  /* Motion */
-  --t-fast: 140ms cubic-bezier(.4,0,.2,1);
-  --t-med:  220ms cubic-bezier(.4,0,.2,1);
+  /* Motion — quick and calm. */
+  --t-fast: 120ms cubic-bezier(.4,0,.2,1);
+  --t-med:  180ms cubic-bezier(.4,0,.2,1);
 
   /* Metrics */
-  --sidebar: 264px;
-  --topbar: 58px;
-  --tabbar: 62px;
+  --sidebar: 256px;
+  --topbar: 52px;
+  --tabbar: 60px;
 }
 
 @media (prefers-reduced-motion: reduce) {
