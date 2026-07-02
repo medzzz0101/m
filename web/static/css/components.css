@@ -387,3 +387,30 @@
 .redeem-in:focus { border-color:var(--accent-line); }
 .redeem .btn.ghost { background:var(--surface-2); color:var(--text); border:1px solid var(--line-strong); }
 .redeem-err { margin-top:10px; font-size:12.5px; color:var(--bad); }
+
+/* ---- Simple 3-mode lookup home ---- */
+.lookup { max-width:720px; margin:24px auto 0; animation:rise .5s both; }
+.lk-eyebrow { font-family:var(--mono); font-size:10.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--text-3); text-align:center; margin-bottom:var(--s3); }
+.lk-title { font-family:var(--display); font-size:34px; font-weight:600; letter-spacing:-.02em;
+  text-align:center; line-height:1.08; margin:0 0 var(--s5); }
+.lk-title .tt { color:var(--accent); }
+@media(max-width:640px){ .lk-title{ font-size:26px; } }
+.seg { display:flex; gap:6px; background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:5px; margin-bottom:var(--s4); }
+.seg-b { flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px;
+  border-radius:8px; border:1px solid transparent; background:transparent; color:var(--text-2);
+  font-family:var(--font); font-size:14px; font-weight:500; cursor:pointer; transition:all var(--t-fast); }
+.seg-b svg { width:16px; height:16px; }
+.seg-b:hover { color:var(--text); }
+.seg-b.on { background:var(--surface-3); color:var(--text); border-color:var(--line-strong); }
+.lk-row { display:flex; gap:var(--s3); }
+.lk-row .input-wrap { flex:1; }
+.lk-ex { display:flex; align-items:center; gap:var(--s2); margin-top:var(--s3); flex-wrap:wrap; }
+.lk-checks { margin-top:var(--s6); background:var(--surface); border:1px solid var(--line); border-radius:12px;
+  padding:var(--s4) var(--s5); }
+.lk-checks-h { font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:var(--s3); }
+.lk-check { display:flex; gap:12px; align-items:flex-start; font-size:14px; color:var(--text); padding:7px 0; }
+.lk-check svg { width:17px; height:17px; color:var(--accent); flex:0 0 17px; margin-top:2px; }
+@media(max-width:640px){ .lk-row{ flex-direction:column; } .lk-row .run-btn{ justify-content:center; padding:13px; } }

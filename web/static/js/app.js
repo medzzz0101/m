@@ -146,34 +146,76 @@ function onNav(key) {
   else if (key === "pricing") showPricing();
 }
 
-// ---------------------------------------------------------------- HOME
-function showHome(filterCat = null) {
+// ---------------------------------------------------------------- HOME (simple)
+// Three focused lookups. Each just searches the LEGAL, public-data sources for
+// that input type; the engine picks the right modules automatically.
+const MODES = {
+  username: {
+    label: "Username", icon: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>`,
+    ph: "@username or social handle…", ex: ["octocat", "torvalds", "jack"],
+    checks: ["Public profiles across 660+ platforms", "Where the handle is present online", "Public bio / follower counts where shown"],
+  },
+  email: {
+    label: "Email", icon: `<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>`,
+    ph: "name@example.com…", ex: ["someone@example.com"],
+    checks: ["Which public data breaches list this email — names only, no passwords", "Public Gravatar profile & linked accounts", "Self-exposure score"],
+  },
+  phone: {
+    label: "Phone", icon: `<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7A2 2 0 0 1 22 16.9z"/>`,
+    ph: "+1 415 555 2671 (with country code)…", ex: ["+14155552671", "+447911123456"],
+    checks: ["Country, region & carrier (metadata)", "Line type & timezone", "Valid-number check — never the owner's identity"],
+  },
+};
+
+function showHome() {
   state.view = "home";
-  $("#topbar-title").textContent = filterCat ? CAT_META[filterCat].label : "Console";
+  state.mode = state.mode || "username";
+  $("#topbar-title").textContent = "Search";
   syncTabs("home");
   const c = $("#content");
   c.className = "content view";
   c.innerHTML = "";
-  c.appendChild(commandBar());
-  c.appendChild(statStrip());
 
-  const cats = filterCat ? [filterCat] : CAT_ORDER;
-  for (const cat of cats) {
-    const list = (state.byCat[cat] || []).filter((m) => m.inputs.length || m.id === "password_kanon");
-    if (!list.length) continue;
-    const head = el("div", "section-h");
-    head.innerHTML = `<span class="section-ico" style="color:${CAT_META[cat].color};background:${CAT_META[cat].color}1f">${catSvg(cat)}</span>
-      <h2>${CAT_META[cat].label}</h2><span class="rule"></span><span class="hint">${list.length} modules</span>`;
-    c.appendChild(head);
-    const grid = el("div", "grid");
-    list.forEach((mod, i) => {
-      const tile = moduleTile(mod);
-      tile.style.animationDelay = Math.min(i * 28, 420) + "ms";  // staggered entrance
-      grid.appendChild(tile);
-    });
-    c.appendChild(grid);
-  }
+  const wrap = el("div", "lookup");
+  wrap.innerHTML = `
+    <div class="lk-eyebrow">public-footprint osint · public data only</div>
+    <h1 class="lk-title">Search a person's <span class="tt">public</span> footprint.</h1>
+    <div class="seg" id="seg">
+      ${Object.entries(MODES).map(([k, m]) => `<button class="seg-b ${k === state.mode ? "on" : ""}" data-m="${k}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${m.icon}</svg>${m.label}</button>`).join("")}
+    </div>
+    <div class="lk-row">
+      <div class="input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+        <input id="target" placeholder="${MODES[state.mode].ph}" autocomplete="off" spellcheck="false">
+        <span class="type-pill" id="type-pill">—</span>
+      </div>
+      <button class="run-btn" id="run-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Search</button>
+    </div>
+    <div class="lk-ex" id="lk-ex"></div>
+    <div class="lk-checks" id="lk-checks"></div>`;
+  c.appendChild(wrap);
+  renderMode();
   bindCommandBar();
+  $$("#seg .seg-b").forEach((b) => b.onclick = () => {
+    state.mode = b.dataset.m;
+    $$("#seg .seg-b").forEach((x) => x.classList.toggle("on", x === b));
+    const inp = $("#target"); inp.placeholder = MODES[state.mode].ph; inp.value = "";
+    $("#type-pill").textContent = "—";
+    renderMode();
+  });
+}
+
+function renderMode() {
+  const m = MODES[state.mode];
+  const ex = $("#lk-ex");
+  ex.innerHTML = `<span class="ex-label">try</span>` +
+    m.ex.map((e) => `<button class="ex" data-ex="${esc(e)}">${esc(e)}</button>`).join("");
+  ex.querySelectorAll(".ex").forEach((b) => b.onclick = () => {
+    const inp = $("#target"); inp.value = b.dataset.ex; inp.dispatchEvent(new Event("input")); runAll();
+  });
+  $("#lk-checks").innerHTML = `<div class="lk-checks-h">What we check</div>` +
+    m.checks.map((t) => `<div class="lk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>${esc(t)}</div>`).join("");
 }
 
 function commandBar() {
@@ -276,18 +318,11 @@ function bindCommandBar() {
     }, 220);
   });
   inp.addEventListener("keydown", (e) => { if (e.key === "Enter") runAll(); });
-  $("#run-btn").onclick = runAll;
-  $("#chip-deep").onclick = (e) => {
-    state.deep = !state.deep;
-    e.currentTarget.classList.toggle("on", state.deep);
-  };
-  $("#chip-upload").onclick = () => $("#file-input").click();
-  $("#chip-pw").onclick = openPwCheck;
-  $$(".ex").forEach((b) => b.onclick = () => {
-    inp.value = b.dataset.ex;
-    inp.dispatchEvent(new Event("input"));
-    runAll();
-  });
+  const rb = $("#run-btn"); if (rb) rb.onclick = runAll;
+  // Optional controls (present only on the advanced command bar).
+  const cd = $("#chip-deep"); if (cd) cd.onclick = (e) => { state.deep = !state.deep; e.currentTarget.classList.toggle("on", state.deep); };
+  const cu = $("#chip-upload"); if (cu) cu.onclick = () => $("#file-input").click();
+  const cp = $("#chip-pw"); if (cp) cp.onclick = openPwCheck;
 }
 
 // ---------------------------------------------------------------- RUN
