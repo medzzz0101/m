@@ -283,6 +283,17 @@ async def pay_verify(invoice: str):
     return await payments.verify_invoice(invoice)
 
 
+@app.post("/api/redeem")
+async def redeem(request: Request):
+    """Owner-issued license keys: enter a code, unlock its tier. Reusable forever."""
+    body = await request.json()
+    code = (body.get("key") or "").strip()
+    tier = config.license_keys().get(code)
+    if not tier:
+        return JSONResponse({"ok": False, "error": "invalid key"}, status_code=404)
+    return {"ok": True, "plan": tier, "name": config.TIER_META[tier]["name"]}
+
+
 # --- PWA + static -----------------------------------------------------------
 @app.get("/sw.js")
 async def sw():
@@ -298,6 +309,11 @@ async def manifest():
 @app.get("/")
 async def index():
     return FileResponse(WEB / "index.html")
+
+
+@app.get("/landing")
+async def landing():
+    return FileResponse(WEB / "landing.html")
 
 
 app.mount("/static", StaticFiles(directory=str(WEB / "static")), name="static")

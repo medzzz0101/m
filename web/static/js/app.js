@@ -647,11 +647,30 @@ function openCheckout(tier) {
   const o = overlay(`<div class="panel"><div class="panel-head"><h3>Upgrade to ${tier.name}</h3><button class="close-x">✕</button></div>
     <div class="panel-body">
       <div class="pay-assets">
-        ${["BTC", "ETH", "USDT"].map((a) => `<div class="pay-asset ${a === "BTC" ? "on" : ""}" data-a="${a}">${a}</div>`).join("")}
+        ${["BTC", "ETH", "USDC"].map((a) => `<div class="pay-asset ${a === "BTC" ? "on" : ""}" data-a="${a}">${a}</div>`).join("")}
       </div>
       <div id="pay-area"><div class="skel"></div></div>
+      <div class="redeem">
+        <input class="redeem-in" id="redeem-in" placeholder="or paste a license key…" autocomplete="off">
+        <button class="btn ghost" id="redeem-go">Redeem</button>
+      </div>
+      <div id="redeem-out"></div>
     </div></div>`, { center: true });
   o.querySelector(".close-x").onclick = () => o.remove();
+  const doRedeem = async () => {
+    const key = o.querySelector("#redeem-in").value.trim();
+    if (!key) return;
+    const out = o.querySelector("#redeem-out");
+    out.innerHTML = `<div class="skel" style="margin-top:10px"></div>`;
+    try {
+      const r = await fetch("/api/redeem", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ key }) });
+      const d = await r.json();
+      if (d.ok) { setPlan(d.plan); o.remove(); paymentSuccess({ id: d.plan, name: d.name }); }
+      else { out.innerHTML = `<div class="redeem-err">Invalid key.</div>`; }
+    } catch { out.innerHTML = `<div class="redeem-err">Couldn't reach the server.</div>`; }
+  };
+  o.querySelector("#redeem-go").onclick = doRedeem;
+  o.querySelector("#redeem-in").addEventListener("keydown", (e) => { if (e.key === "Enter") doRedeem(); });
   o.querySelectorAll(".pay-asset").forEach((b) => b.onclick = () => {
     o.querySelectorAll(".pay-asset").forEach((x) => x.classList.remove("on"));
     b.classList.add("on"); asset = b.dataset.a; createInvoice();

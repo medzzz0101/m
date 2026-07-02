@@ -27,8 +27,8 @@ from .core.net import get_client
 _INVOICE_DIR = Path(__file__).resolve().parent.parent / "data" / "invoices"
 _INVOICE_DIR.mkdir(parents=True, exist_ok=True)
 
-# USDT (Tether) ERC-20 contract on Ethereum mainnet.
-_USDT_CONTRACT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+# USDC (USD Coin) ERC-20 contract on Ethereum mainnet (6 decimals).
+_USDC_CONTRACT = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 
 
 async def _rate(asset: str) -> float:
@@ -48,7 +48,9 @@ async def _rate(asset: str) -> float:
 def _addr_for(asset: str) -> str:
     if asset == "BTC":
         return config.PAY_ADDRESS_BTC
-    return config.PAY_ADDRESS_ETH  # ETH + USDT share the receiving address
+    if asset == "USDC":
+        return config.PAY_ADDRESS_USDC
+    return config.PAY_ADDRESS_ETH
 
 
 async def create_invoice(plan: str, asset: str) -> dict:
@@ -140,7 +142,7 @@ async def _check_btc(inv: dict) -> tuple[bool, str | None]:
 async def _check_evm(inv: dict) -> tuple[bool, str | None]:
     """Check a public EVM explorer for an ETH or USDT transfer to our address."""
     addr = inv["address"].lower()
-    if inv["asset"] == "USDT":
+    if inv["asset"] == "USDC":
         # Token transfers via Blockscout-compatible public API.
         url = f"https://eth.blockscout.com/api/v2/addresses/{addr}/token-transfers"
         r = await get_client().get(url)
@@ -149,7 +151,7 @@ async def _check_evm(inv: dict) -> tuple[bool, str | None]:
         need = inv["amount"]
         for t in r.json().get("items", []):
             tok = (t.get("token") or {}).get("address", "").lower()
-            if tok != _USDT_CONTRACT.lower():
+            if tok != _USDC_CONTRACT.lower():
                 continue
             val = float(t.get("total", {}).get("value", 0)) / 1e6
             if val >= need:
