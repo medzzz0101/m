@@ -25,6 +25,19 @@ from ..core.net import get_client
 #     - a string: present only if that string is ABSENT from the body
 # Only public, logged-out-viewable profile pages are listed.
 # ---------------------------------------------------------------------------
+def _mask_email(email: str) -> str:
+    """Mask a self-published email: keep 2 chars of the local part + 1 of the
+    domain, hide the rest. e.g. jane@gmail.com -> ja••@g•••.com"""
+    try:
+        local, _, domain = email.partition("@")
+        dname, _, tld = domain.rpartition(".")
+        ml = local[:2] + "•" * max(len(local) - 2, 2)
+        md = (dname[:1] + "•" * max(len(dname) - 1, 2)) if dname else "•••"
+        return f"{ml}@{md}.{tld}" if tld else f"{ml}@{md}"
+    except Exception:
+        return "•••"
+
+
 SITES: list[dict] = [
     {"n": "GitHub",        "u": "https://github.com/{u}",                  "m": "status", "cat": "dev"},
     {"n": "GitLab",        "u": "https://gitlab.com/{u}",                  "m": "status", "cat": "dev"},
@@ -174,6 +187,11 @@ class GithubProfile(BaseModule):
             if v:
                 link = v if k == "blog" and str(v).startswith("http") else None
                 res.add(label, v, conf, link=link)
+        # Public email — ONLY the address the user chose to publish on their
+        # profile (GitHub's public `email` field). Shown MASKED as a courtesy.
+        if d.get("email"):
+            res.add("Public email (self-published)", _mask_email(d["email"]),
+                    Confidence.LIKELY)
         if d.get("blog", "").startswith("http"):
             dn = res.node("url", d["blog"], label="website"); res.edge(node.id, dn.id, "links_to")
         res.summary = f"@{user}: {d.get('public_repos',0)} repos, {d.get('followers',0)} followers"
