@@ -71,12 +71,15 @@ export function renderGraph(canvas, data, onPivot) {
     ctx.clearRect(0, 0, W(), H());
     ctx.save();
     ctx.translate(pan.x, pan.y);
-    // edges
+    // edges — cyan, faintly glowing, brighter when they touch the hovered node
     ctx.lineWidth = dpr;
     for (const e of edges) {
       const a = nodes[e.s], b = nodes[e.t];
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      const lit = hover && (a === hover || b === hover);
+      ctx.strokeStyle = lit ? "rgba(30,230,207,0.55)" : "rgba(30,230,207,0.14)";
+      ctx.shadowColor = "rgba(30,230,207,0.5)"; ctx.shadowBlur = lit ? 8 * dpr : 0;
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.shadowBlur = 0;
     }
     // nodes
     ctx.font = `${11 * dpr}px ui-monospace, monospace`;

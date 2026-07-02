@@ -14,6 +14,80 @@ from ..core.base import (BaseModule, Category, Confidence, InputType, RunContext
 from ..core.net import get_client
 
 
+class SearchLaunchpad(BaseModule):
+    id = "search_launchpad"
+    name = "OSINT search launchpad"
+    description = "Ready-to-open links to public search engines (Shodan, Censys, crt.sh, urlscan…)."
+    category = Category.INTEL
+    inputs = (InputType.DOMAIN, InputType.IP, InputType.URL, InputType.USERNAME, InputType.EMAIL)
+    tier = "base"
+
+    # Public, LEGAL infra/threat/search engines only. Deliberately EXCLUDES
+    # people-search / breach-dump / phone-owner engines (ThatsThem, Dehashed,
+    # Snusbase, SpyDialer, sync.me, Tellows, HashKiller) — those deanonymise
+    # private individuals and are out of scope by design.
+    def _engines(self, it, q):
+        from urllib.parse import quote
+        e = quote(q, safe="")
+        common = [
+            ("Google", f"https://www.google.com/search?q={e}"),
+            ("Bing", f"https://www.bing.com/search?q={e}"),
+            ("Yandex", f"https://yandex.com/search/?text={e}"),
+            ("Wayback", f"https://web.archive.org/web/*/{q}"),
+        ]
+        if it in (InputType.DOMAIN, InputType.URL):
+            host = re.sub(r"^https?://", "", q).split("/")[0]
+            h = quote(host, safe="")
+            return [
+                ("Shodan", f"https://www.shodan.io/search?query=hostname%3A{h}"),
+                ("Censys", f"https://search.censys.io/search?resource=hosts&q={h}"),
+                ("ZoomEye", f"https://www.zoomeye.org/searchResult?q={h}"),
+                ("FOFA", f"https://en.fofa.info/result?qbase64=" + base64.b64encode(f'domain="{host}"'.encode()).decode()),
+                ("crt.sh (certs)", f"https://crt.sh/?q=%25.{h}"),
+                ("urlscan.io", f"https://urlscan.io/search/#{h}"),
+                ("BuiltWith", f"https://builtwith.com/{h}"),
+                ("DNSViz", f"https://dnsviz.net/d/{h}/analyze/"),
+                ("Netlas", f"https://app.netlas.io/domains/?q={h}"),
+                ("Onyphe", f"https://www.onyphe.io/search/?q={h}"),
+                ("FullHunt", f"https://fullhunt.io/search?query={h}"),
+                ("LeakIX", f"https://leakix.net/domain/{h}"),
+            ] + common
+        if it == InputType.IP:
+            return [
+                ("Shodan", f"https://www.shodan.io/host/{q}"),
+                ("Censys", f"https://search.censys.io/hosts/{q}"),
+                ("GreyNoise", f"https://viz.greynoise.io/ip/{q}"),
+                ("ZoomEye", f"https://www.zoomeye.org/searchResult?q={e}"),
+                ("Onyphe", f"https://www.onyphe.io/search/?q={q}"),
+                ("Netlas", f"https://app.netlas.io/host/{q}/"),
+                ("LeakIX", f"https://leakix.net/host/{q}"),
+                ("AbuseIPDB", f"https://www.abuseipdb.com/check/{q}"),
+            ] + common
+        if it == InputType.USERNAME:
+            u = quote(q.lstrip("@"), safe="")
+            return [
+                ("GitHub", f"https://github.com/search?q={u}&type=users"),
+                ("grep.app (code)", f"https://grep.app/search?q={u}"),
+                ("SearchCode", f"https://searchcode.com/?q={u}"),
+                ("Reddit", f"https://www.reddit.com/search/?q={u}"),
+            ] + common
+        if it == InputType.EMAIL:
+            return [
+                ("Hunter.io", f"https://hunter.io/search/{quote(q.split('@')[-1])}"),
+                ("HaveIBeenPwned", f"https://haveibeenpwned.com/"),
+            ] + common
+        return common
+
+    async def run(self, ctx: RunContext) -> ModuleResult:
+        res = self.result()
+        for name, url in self._engines(ctx.input_type, ctx.target):
+            res.add(name, url.replace("https://", "").split("?")[0][:48] + "…",
+                    Confidence.INFO, link=url)
+        res.summary = f"{len(res.findings)} public search engines for this target"
+        res.extra["note"] = "opens external public search engines"
+        return res
+
+
 class GoogleDorks(BaseModule):
     id = "google_dorks"
     name = "Search-dork builder"
