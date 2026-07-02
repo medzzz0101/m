@@ -111,6 +111,50 @@ async def run(request: Request):
     return result
 
 
+@app.post("/api/run_stream")
+async def run_stream(request: Request):
+    """Server-Sent Events: emit each module result as soon as it completes, then
+    a final 'done' event with the merged graph + stats. Makes the UI feel instant."""
+    import json as _json
+    from fastapi.responses import StreamingResponse
+
+    body = await request.json()
+    target = (body.get("target") or "").strip()
+    plan = body.get("plan", "base")
+    deep = bool(body.get("deep", False))
+    authorized = bool(body.get("authorized", False))
+    upload_token = body.get("upload")
+
+    if upload_token:
+        it = InputType.IMAGE
+        path = _uploads.get(upload_token)
+        target = target or "uploaded image"
+    else:
+        it = detect(target)
+        path = None
+
+    ctx = RunContext(target=target, input_type=it, deep=deep,
+                     authorized=authorized, upload_path=path)
+    mods = [m for m in registry.for_input(it)
+            if _allowed(m, plan) and (not m.requires_authorized or authorized)]
+    skipped = [m.id for m in registry.for_input(it) if not _allowed(m, plan)]
+
+    async def gen():
+        # tell the client up-front how many modules to expect
+        yield _sse("meta", {"target": target, "input_type": it.value,
+                            "total": len(mods), "skipped": skipped})
+        async for kind, payload in orchestrator.run_stream(mods, ctx):
+            yield _sse(kind, payload)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+def _sse(event: str, data) -> bytes:
+    import json as _json
+    return f"event: {event}\ndata: {_json.dumps(data)}\n\n".encode()
+
+
 @app.post("/api/run_module")
 async def run_module(request: Request):
     body = await request.json()

@@ -106,6 +106,35 @@ class Orchestrator:
         }
 
 
+    async def run_stream(self, modules, ctx):
+        """Async generator: yield ('module', dict) as each finishes, then
+        ('done', payload) with the merged graph + stats. Powers progressive UI."""
+        import asyncio
+        from .base import GraphNode, GraphEdge
+        graph = EntityGraph()
+        out = []
+        tasks = [asyncio.create_task(self._run_one(m, ctx)) for m in modules]
+        for coro in asyncio.as_completed(tasks):
+            r = await coro
+            pre = r.__dict__.get("_predumped")
+            d = pre if pre is not None else r.to_dict()
+            out.append(d)
+            if pre is not None:
+                nodes = [GraphNode(**n_) for n_ in _clean_nodes(pre.get("nodes", []))]
+                edges = [GraphEdge(**e_) for e_ in pre.get("edges", [])]
+            else:
+                nodes, edges = r.nodes, r.edges
+            graph.ingest(nodes, edges)
+            yield ("module", d)
+        ok = sum(1 for d in out if d["ok"])
+        yield ("done", {
+            "target": ctx.target, "input_type": ctx.input_type.value,
+            "graph": graph.to_dict(),
+            "stats": {"total": len(out), "ok": ok, "failed": len(out) - ok,
+                      "nodes": graph.size[0], "edges": graph.size[1]},
+        })
+
+
 def _clean_nodes(raw: list[dict]) -> list[dict]:
     """Drop derived keys (id/degree) before reconstructing a GraphNode."""
     out = []

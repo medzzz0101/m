@@ -291,31 +291,113 @@ async function runAll() {
   const target = $("#target")?.value.trim();
   if (!target && !state.upload) return toast("Enter a target first");
   setProgress(true);
-  showResults(true);
+  state.view = "results";
+  syncTabs("results");
+  $("#topbar-title").textContent = "Results";
+
+  // progressive result scaffold
+  const c = $("#content");
+  c.className = "content view";
+  c.innerHTML = `<div class="rtoolbar">
+      <span class="target">${esc(target || "image")}</span>
+      <span class="rstat" id="live-stat">starting…</span></div>
+    <div class="scanning" id="scanbar"><span class="scan-dot"></span> <span id="scan-txt">Correlating…</span></div>
+    <div class="dash" id="live-dash"></div>
+    <div class="results" id="live-results"></div>`;
+  const live = { modules: [], graph: { nodes: [], edges: [] }, stats: {}, target, input_type: "" };
+  let expected = 0, doneCount = 0;
+
+  const body = { target, plan: state.plan, deep: state.deep, authorized: state.authorized };
+  if (state.upload) body.upload = state.upload;
+
   try {
-    const body = { target, plan: state.plan, deep: state.deep, authorized: state.authorized };
-    if (state.upload) body.upload = state.upload;
-    $("#progress").style.width = "70%";
-    const res = await fetch("/api/run", {
+    const resp = await fetch("/api/run_stream", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    }).then((r) => r.json());
-    state.lastResult = res;
-    renderResults(res);
+    });
+    if (!resp.ok || !resp.body) throw new Error("HTTP " + resp.status);
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const chunks = buf.split("\n\n");
+      buf = chunks.pop();
+      for (const chunk of chunks) {
+        const ev = parseSSE(chunk);
+        if (!ev) continue;
+        if (ev.event === "meta") {
+          expected = ev.data.total;
+          live.input_type = ev.data.input_type;
+          live.skipped = ev.data.skipped;
+          $("#scan-txt").textContent = `Correlating ${expected} modules…`;
+          $("#progress").style.width = "15%";
+        } else if (ev.event === "module") {
+          live.modules.push(ev.data);
+          doneCount++;
+          appendLiveCard(ev.data);
+          updateLiveStats(live, doneCount, expected);
+          $("#progress").style.width = Math.min(15 + (doneCount / Math.max(expected, 1)) * 80, 96) + "%";
+        } else if (ev.event === "done") {
+          live.graph = ev.data.graph;
+          live.stats = ev.data.stats;
+          state.lastResult = live;
+          finalizeLive(live);
+        }
+      }
+    }
   } catch (e) {
-    // Almost always a dropped/rotated preview link — say so clearly.
     $("#content").innerHTML = `<div class="card err open">
       <div class="card-head"><span class="card-dot" style="background:var(--bad)"></span>
         <span class="card-title">Couldn't reach the server</span></div>
       <div class="card-body"><table class="rec">
         <tr><td class="k">reason</td><td class="v">${esc(String(e && e.message || e))}</td></tr>
-        <tr><td class="k">likely cause</td><td class="v">the preview link expired or rotated — get the current link, or deploy to a permanent host</td></tr>
-      </table>
-      <div style="padding:12px 16px"><button class="btn" onclick="location.reload()">Reload</button></div>
+        <tr><td class="k">likely cause</td><td class="v">the preview link may have rotated — reload, get the current link, or deploy to a permanent host</td></tr>
+      </table><div style="padding:12px 16px"><button class="btn" onclick="location.reload()">Reload</button></div>
       </div></div>`;
   } finally {
     $("#progress").style.width = "100%";
     setTimeout(() => setProgress(false), 300);
   }
+}
+
+function parseSSE(chunk) {
+  let event = "message", data = "";
+  for (const line of chunk.split("\n")) {
+    if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:")) data += line.slice(5).trim();
+  }
+  if (!data) return null;
+  try { return { event, data: JSON.parse(data) }; } catch { return null; }
+}
+
+function appendLiveCard(m) {
+  const wrap = $("#live-results");
+  if (!wrap) return;
+  // only surface cards that actually found something first; keep failures last
+  const card = resultCard(m);
+  if (!m.ok || !(m.findings || []).length) card.classList.add("muted");
+  wrap.appendChild(card);
+}
+
+function updateLiveStats(live, done, expected) {
+  const findings = live.modules.reduce((a, m) => a + (m.findings || []).length, 0);
+  const hits = live.modules.filter((m) => m.ok && (m.findings || []).length).length;
+  const ls = $("#live-stat");
+  if (ls) ls.textContent = `${done}/${expected} modules · ${findings} findings`;
+  const dash = $("#live-dash");
+  if (dash) dash.innerHTML = [[hits, "with data"], [findings, "findings"], [done, "done"], [expected - done, "pending"]]
+    .map(([n, l]) => `<div class="dash-cell"><div class="dash-n">${n}</div><div class="dash-l">${l}</div></div>`).join("");
+}
+
+function finalizeLive(live) {
+  const sb = $("#scanbar"); if (sb) sb.remove();
+  updateLiveStats(live, live.stats.total, live.stats.total);
+  // re-render sorted (hits first) + add graph/map/export via the standard renderer
+  renderResults(live);
+  toast(`${live.stats.ok} modules · ${live.stats.nodes} entities`);
 }
 
 async function runSingle(moduleId) {
