@@ -394,3 +394,8 @@
   .command-row { flex-direction:column; }
   .run-btn { padding:13px; justify-content:center; }
 }
+
+/* deep-pivot provenance badge on a result card */
+.pivot-badge { margin-left:8px; font-size:10px; font-family:var(--mono); color:var(--accent-2);
+  background:var(--accent-soft); border:1px solid var(--accent-line); border-radius:var(--pill);
+  padding:1px 8px; white-space:nowrap; }

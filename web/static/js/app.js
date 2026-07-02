@@ -492,7 +492,7 @@ function resultCard(m) {
   const head = el("div", "card-head");
   head.innerHTML = `
     <span class="card-dot" style="background:${CAT_META[cat]?.color || "var(--info)"}"></span>
-    <span class="card-title">${esc(meta.name || m.module)}</span>
+    <span class="card-title">${esc(meta.name || m.module)}${m.pivot_from ? `<span class="pivot-badge">↳ ${esc(m.pivot_from)}</span>` : ""}</span>
     <span class="card-sum">${esc(m.summary || (m.ok ? "" : m.error || "error"))}</span>
     <span class="card-meta">${m.elapsed_ms ?? 0}ms${m.extra && m.extra.cached ? " · cached" : ""}</span>
     <svg class="card-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M9 6l6 6-6 6"/></svg>`;

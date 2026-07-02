@@ -140,14 +140,78 @@ async def run_stream(request: Request):
     skipped = [m.id for m in registry.for_input(it) if not _allowed(m, plan)]
 
     async def gen():
-        # tell the client up-front how many modules to expect
+        from .core.graph import EntityGraph
+        from .core.base import GraphNode, GraphEdge
+        graph = EntityGraph()
+        all_mods: list[dict] = []
+        seen_targets = {target.lower()}
+
+        def ingest(d):
+            nodes = [GraphNode(type=n["type"], value=n["value"], label=n.get("label"),
+                               meta=n.get("meta", {})) for n in d.get("nodes", [])]
+            edges = [GraphEdge(**e) for e in d.get("edges", [])]
+            graph.ingest(nodes, edges)
+
+        # Deep mode adds a second, bounded correlation hop: we follow the most
+        # connected infrastructure entities we just discovered (subdomains, IPs,
+        # related domains) and re-run a small, fast recon set on each — turning a
+        # flat scan into a real multi-hop attack-surface graph. Purely public
+        # infrastructure OSINT; never person-level.
+        est = len(mods) + (18 if deep and it.value != "image" else 0)
         yield _sse("meta", {"target": target, "input_type": it.value,
-                            "total": len(mods), "skipped": skipped})
+                            "total": est, "skipped": skipped, "deep": deep})
+
         async for kind, payload in orchestrator.run_stream(mods, ctx):
-            yield _sse(kind, payload)
+            if kind == "module":
+                all_mods.append(payload); ingest(payload)
+                yield _sse("module", payload)
+
+        if deep and it.value != "image":
+            for ptarget, pit in _pick_pivots(graph, seen_targets):
+                seen_targets.add(ptarget.lower())
+                pmods = [registry.get(mid) for mid in _DEEP_SET.get(pit.value, [])]
+                pmods = [m for m in pmods if m and _allowed(m, plan)]
+                if not pmods:
+                    continue
+                pctx = RunContext(target=ptarget, input_type=pit, deep=False)
+                async for kind, payload in orchestrator.run_stream(pmods, pctx):
+                    if kind == "module":
+                        payload["pivot_from"] = ptarget
+                        all_mods.append(payload); ingest(payload)
+                        yield _sse("module", payload)
+
+        ok = sum(1 for d in all_mods if d["ok"])
+        gd = graph.to_dict()
+        yield _sse("done", {"target": target, "input_type": it.value,
+                            "graph": gd,
+                            "stats": {"total": len(all_mods), "ok": ok,
+                                      "failed": len(all_mods) - ok,
+                                      "nodes": len(gd["nodes"]), "edges": len(gd["edges"])}})
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# Fast, cheap recon run on each pivoted entity during a deep scan.
+_DEEP_SET = {
+    "domain": ["dns_records", "http_probe", "tls_certificate", "ip_geo"],
+    "ip": ["ip_geo", "reverse_dns", "shodan_internetdb"],
+}
+
+
+def _pick_pivots(graph, seen, limit: int = 6):
+    """Choose the most-connected new infra entities to expand one more hop."""
+    gd = graph.to_dict()
+    cands = []
+    for n in gd["nodes"]:
+        if n["type"] in ("subdomain", "domain", "ip") and n["value"].lower() not in seen:
+            cands.append(n)
+    cands.sort(key=lambda n: n.get("degree", 0), reverse=True)
+    out = []
+    for n in cands[:limit]:
+        pit = InputType.IP if n["type"] == "ip" else InputType.DOMAIN
+        out.append((n["value"], pit))
+    return out
 
 
 def _sse(event: str, data) -> bytes:
