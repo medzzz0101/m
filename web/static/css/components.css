@@ -2,6 +2,15 @@
    components.css — every reusable UI piece.
    ========================================================================== */
 
+/* ---- Entrance animations (used across the home) ---- */
+@keyframes rise { from { opacity:0; transform:translateY(16px) scale(.985); }
+  to { opacity:1; transform:none; } }
+@keyframes riseSoft { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:none; } }
+.command { animation: rise .55s cubic-bezier(.2,.7,.2,1) both; }
+.stats { animation: riseSoft .5s .06s both; }
+.section-h { animation: riseSoft .5s both; }
+.grid .mod { animation: rise .5s both; }
+
 /* ---- Command bar (the search hero) ---- */
 .command { background:linear-gradient(180deg, var(--surface), var(--bg-2));
   border:1px solid var(--line-strong); border-radius:var(--r3); padding:var(--s5);
@@ -29,10 +38,10 @@
 .type-pill { font-size:11px; font-family:var(--mono); color:var(--accent-2); background:var(--accent-soft);
   border:1px solid var(--accent-line); border-radius:var(--pill); padding:3px 10px; white-space:nowrap; }
 .run-btn { display:flex; align-items:center; gap:8px; padding:0 var(--s5); border:none; cursor:pointer;
-  border-radius:var(--r2); background:linear-gradient(180deg, var(--accent-2), var(--accent));
-  color:#0a0710; font-weight:700; font-size:15px; transition:transform var(--t-fast), box-shadow var(--t-fast);
-  box-shadow:0 6px 20px var(--accent-glow); white-space:nowrap; }
-.run-btn:hover { transform:translateY(-1px); box-shadow:0 10px 28px var(--accent-glow); }
+  border-radius:var(--r2); background:linear-gradient(120deg, var(--accent), var(--accent2));
+  color:#04121a; font-weight:750; font-size:15px; transition:transform var(--t-fast), box-shadow var(--t-fast), filter var(--t-fast);
+  box-shadow:0 8px 26px var(--accent-glow); white-space:nowrap; background-size:150% 150%; }
+.run-btn:hover { transform:translateY(-1px); box-shadow:0 12px 34px var(--accent2-glow); filter:brightness(1.06); }
 .run-btn:active { transform:translateY(0); }
 .run-btn svg { width:18px; height:18px; }
 
@@ -283,9 +292,14 @@
 /* ---- Boot ---- */
 .boot { position:fixed; inset:0; z-index:200; background:var(--bg); display:flex; flex-direction:column;
   align-items:center; justify-content:center; font-family:var(--mono); }
-.boot-logo { display:flex; align-items:center; gap:var(--s3); margin-bottom:var(--s6); }
-.boot-logo svg { width:40px; height:40px; color:var(--accent); }
-.boot-logo .t { font-size:30px; font-weight:700; letter-spacing:.28em; }
+.boot-logo { display:flex; align-items:center; gap:var(--s4); margin-bottom:var(--s6);
+  animation: rise .6s both; }
+.boot-logo svg { width:46px; height:46px; color:var(--accent);
+  filter:drop-shadow(0 0 14px var(--accent-glow)); animation: portalspin 8s linear infinite; }
+.boot-logo .t { font-size:32px; font-weight:750; letter-spacing:.34em;
+  background:linear-gradient(120deg,var(--accent),var(--accent2)); -webkit-background-clip:text;
+  background-clip:text; -webkit-text-fill-color:transparent; }
+@keyframes portalspin { to { transform:rotate(360deg); } }
 .boot-lines { width:min(90vw,460px); font-size:13.5px; line-height:2; color:var(--confirmed); }
 .boot-lines .k { color:var(--text-2); }
 .boot-lines .caret { color:var(--accent); }

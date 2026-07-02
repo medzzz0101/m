@@ -5,48 +5,54 @@
    re-themes. Both mobile and desktop read from these same tokens.
    ========================================================================== */
 :root {
-  /* Surfaces — layered dark */
-  --bg:        #070809;
-  --bg-2:      #0b0d10;
-  --surface:   #0f1216;
-  --surface-2: #151920;
-  --surface-3: #1d222b;
-  --hover:     #1a1f27;
+  /* Surfaces — near-pure black void ("limbo") */
+  --bg:        #030305;
+  --bg-2:      #070810;
+  --surface:   #0b0d16;
+  --surface-2: #11141f;
+  --surface-3: #191d2b;
+  --hover:     #161a26;
 
   /* Hairlines */
   --line:        rgba(255,255,255,0.07);
-  --line-strong: rgba(255,255,255,0.13);
+  --line-strong: rgba(120,240,230,0.16);
 
   /* Text */
-  --text:   #e9ecf1;
-  --text-2: #98a0ad;
-  --text-3: #5c636f;
+  --text:   #eaf6f6;
+  --text-2: #92a2ad;
+  --text-3: #566270;
 
-  /* THE accent — violet, used sparingly */
-  --accent:      #8b7cff;
-  --accent-2:    #a99bff;
-  --accent-soft: rgba(139,124,255,0.12);
-  --accent-line: rgba(139,124,255,0.32);
-  --accent-glow: rgba(139,124,255,0.28);
+  /* THE accent — electric cyan */
+  --accent:      #1ee6cf;
+  --accent-2:    #5cf5e4;
+  --accent-soft: rgba(30,230,207,0.10);
+  --accent-line: rgba(30,230,207,0.34);
+  --accent-glow: rgba(30,230,207,0.30);
+
+  /* Secondary accent — hot magenta (used for gradients / pops) */
+  --accent2:      #ff5c9e;
+  --accent2-2:    #ff87b8;
+  --accent2-soft: rgba(255,92,158,0.12);
+  --accent2-glow: rgba(255,92,158,0.30);
 
   /* Category hues (sidebar + card accents) */
-  --c-social:         #8b7cff;
-  --c-identity:       #e892d0;
-  --c-infrastructure: #7fb6f0;
-  --c-image:          #5ad6a0;
-  --c-intel:          #e8c468;
+  --c-social:         #1ee6cf;
+  --c-identity:       #ff5c9e;
+  --c-infrastructure: #3aa0ff;
+  --c-image:          #55e08a;
+  --c-intel:          #ffcf5c;
 
   /* Confidence / status */
-  --confirmed: #5ad6a0; --confirmed-s: rgba(90,214,160,0.13);
-  --likely:    #7fb6f0; --likely-s:    rgba(127,182,240,0.13);
-  --possible:  #e8c468; --possible-s:  rgba(232,196,104,0.13);
+  --confirmed: #37e0a4; --confirmed-s: rgba(55,224,164,0.13);
+  --likely:    #3aa0ff; --likely-s:    rgba(58,160,255,0.13);
+  --possible:  #ffcf5c; --possible-s:  rgba(255,207,92,0.13);
   --info:      #7b8494; --info-s:      rgba(123,132,148,0.10);
-  --bad:       #f08a8a; --bad-s:       rgba(240,138,138,0.13);
+  --bad:       #ff7a7a; --bad-s:       rgba(255,122,122,0.13);
 
   /* Graph node hues */
-  --n-username:#8b7cff; --n-profile:#a99bff; --n-email:#e8c468;
-  --n-domain:#7fb6f0;   --n-subdomain:#9ecbf5; --n-ip:#5ad6a0;
-  --n-geo:#f08a8a;      --n-tech:#e892d0;      --n-org:#ffffff;
+  --n-username:#1ee6cf; --n-profile:#5cf5e4; --n-email:#ffcf5c;
+  --n-domain:#3aa0ff;   --n-subdomain:#7fc0ff; --n-ip:#55e08a;
+  --n-geo:#ff5c9e;      --n-tech:#ff87b8;      --n-org:#ffffff;
   --n-url:#c0c6d0;      --n-btc:#f7931a;       --n-default:#6d6b7e;
 
   /* Type */

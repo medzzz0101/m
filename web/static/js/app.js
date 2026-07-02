@@ -1,4 +1,4 @@
-/* app.js — the LATTICE console front-end.
+/* app.js — the LIMBO console front-end.
    Vanilla ES modules, no framework. Talks to the FastAPI backend, renders the
    module grid, runs investigations, and draws the entity graph + map. Read it
    top-to-bottom: state → boot → data load → render → run → overlays. */
@@ -48,7 +48,7 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 // ---------------------------------------------------------------- boot
 const BOOT_LINES = [
   ["loading modules", null],
-  ["correlation engine", "ready"],
+  ["correlation core", "ready"],
   ["entity graph", "online"],
   ["input detectors", "9 types"],
   ["secure channel", "established"],
@@ -166,7 +166,11 @@ function showHome(filterCat = null) {
       <h2>${CAT_META[cat].label}</h2><span class="rule"></span><span class="hint">${list.length} modules</span>`;
     c.appendChild(head);
     const grid = el("div", "grid");
-    for (const mod of list) grid.appendChild(moduleTile(mod));
+    list.forEach((mod, i) => {
+      const tile = moduleTile(mod);
+      tile.style.animationDelay = Math.min(i * 28, 420) + "ms";  // staggered entrance
+      grid.appendChild(tile);
+    });
     c.appendChild(grid);
   }
   bindCommandBar();
@@ -729,7 +733,7 @@ function openCmdk() {
 
 // Build and download a Markdown report of the current result.
 function exportReport(res) {
-  const lines = [`# LATTICE report — ${res.target}`, "",
+  const lines = [`# LIMBO report — ${res.target}`, "",
     `Generated ${new Date().toISOString()}`,
     `Type: ${res.input_type} · ${res.stats?.ok || 0} modules · ${res.stats?.nodes || 0} entities`, ""];
   for (const m of res.modules || []) {
@@ -743,7 +747,7 @@ function exportReport(res) {
   const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `lattice-${(res.target || "report").replace(/[^\w.-]/g, "_")}.md`;
+  a.download = `limbo-${(res.target || "report").replace(/[^\w.-]/g, "_")}.md`;
   a.click();
   toast("Report downloaded");
 }
@@ -815,7 +819,7 @@ function showOffline() {
     <div class="offline-ico">⚠</div>
     <h2>Can't reach the server</h2>
     <p>The API isn't responding. If you're on a temporary preview link it may have
-    expired or rotated to a new address. Ask for the current link, or deploy LATTICE
+    expired or rotated to a new address. Ask for the current link, or deploy LIMBO
     to a permanent host.</p>
     <button class="btn" id="retry-btn">Retry connection</button>
   </div>`;
