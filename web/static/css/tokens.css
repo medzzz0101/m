@@ -55,9 +55,11 @@
   --n-geo:#ff5c9e;      --n-tech:#ff87b8;      --n-org:#ffffff;
   --n-url:#c0c6d0;      --n-btc:#f7931a;       --n-default:#6d6b7e;
 
-  /* Type */
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, system-ui, sans-serif;
-  --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  /* Type — Space Grotesk gives the UI a distinctive, non-generic voice;
+     JetBrains Mono carries all the data readouts. */
+  --font: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --display: "Space Grotesk", var(--font);
 
   /* Space scale */
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px;

@@ -305,6 +305,40 @@
 .boot-lines .caret { color:var(--accent); }
 .boot-skip { position:absolute; bottom:var(--s6); font-size:11px; letter-spacing:.2em; color:var(--text-3); }
 
+/* ---- Payment success moment ---- */
+.success-overlay { position:fixed; inset:0; z-index:200; display:grid; place-items:center;
+  background:radial-gradient(120% 90% at 50% 30%, rgba(30,230,207,0.10), rgba(3,3,5,0.94) 60%);
+  backdrop-filter:blur(10px); animation:fade .3s both; overflow:hidden; }
+.success-overlay.out { animation:fade .3s reverse forwards; }
+.confetti { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.success-card { position:relative; text-align:center; padding:0 var(--s6); max-width:440px;
+  animation:successRise .6s cubic-bezier(.2,.8,.2,1) both; }
+.success-ring { width:132px; height:132px; margin:0 auto var(--s5); position:relative; }
+.success-ring::before { content:""; position:absolute; inset:-6px; border-radius:50%;
+  background:radial-gradient(closest-side, var(--accent-glow), transparent);
+  animation:haloPulse 2.4s ease-in-out infinite; }
+.success-mark { width:132px; height:132px; position:relative; }
+.sm-ring { fill:none; stroke:var(--accent); stroke-width:5; stroke-linecap:round;
+  stroke-dasharray:327; stroke-dashoffset:327; transform:rotate(-90deg); transform-origin:center;
+  animation:drawRing .7s .1s cubic-bezier(.6,0,.3,1) forwards;
+  filter:drop-shadow(0 0 8px var(--accent-glow)); }
+.sm-check { fill:none; stroke:var(--accent2); stroke-width:7; stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:80; stroke-dashoffset:80; animation:drawCheck .4s .7s cubic-bezier(.6,0,.3,1) forwards;
+  filter:drop-shadow(0 0 6px var(--accent2-glow)); }
+.success-kicker { font-family:var(--mono); font-size:11px; letter-spacing:.24em; text-transform:uppercase;
+  color:var(--accent); margin-bottom:var(--s3); opacity:0; animation:riseSoft .5s .8s both; }
+.success-title { font-family:var(--display); font-size:30px; font-weight:700; margin:0 0 var(--s3);
+  letter-spacing:-.01em; opacity:0; animation:riseSoft .5s .95s both; }
+.success-title .grad { background:linear-gradient(120deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.success-sub { color:var(--text-2); font-size:14px; line-height:1.6; margin:0 0 var(--s5);
+  opacity:0; animation:riseSoft .5s 1.05s both; }
+.success-cta { opacity:0; animation:riseSoft .5s 1.2s both; padding:13px var(--s6); }
+@keyframes drawRing { to { stroke-dashoffset:0; } }
+@keyframes drawCheck { to { stroke-dashoffset:0; } }
+@keyframes successRise { from{opacity:0; transform:translateY(24px) scale(.96);} to{opacity:1; transform:none;} }
+@keyframes haloPulse { 0%,100%{opacity:.5; transform:scale(1);} 50%{opacity:.9; transform:scale(1.08);} }
+
 /* offline card */
 .offline-card { text-align:center; padding:48px var(--s5); background:var(--surface);
   border:1px solid var(--line); border-radius:var(--r3); max-width:460px; margin:40px auto; }

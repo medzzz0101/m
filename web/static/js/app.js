@@ -664,9 +664,9 @@ function openCheckout(tier) {
     stat.hidden = false; stat.className = "pay-status pending"; stat.textContent = "Checking blockchain…";
     const r = await fetch("/api/pay/verify?invoice=" + id).then((x) => x.json());
     if (r.status === "paid") {
-      stat.className = "pay-status paid"; stat.textContent = "✓ Payment confirmed — plan unlocked";
+      stat.className = "pay-status paid"; stat.textContent = "✓ Confirmed on-chain";
       setPlan(tier.id);
-      setTimeout(() => { o.remove(); showPricing(); toast(`Upgraded to ${tier.name}`); }, 1100);
+      setTimeout(() => { o.remove(); paymentSuccess(tier); }, 500);
     } else {
       stat.className = "pay-status pending";
       stat.textContent = "Not seen yet — try again in a moment.";
@@ -706,6 +706,64 @@ function openPwCheck() {
   o.querySelector("#pw-go").onclick = go;
   o.querySelector("#pw-in").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
   setTimeout(() => o.querySelector("#pw-in").focus(), 50);
+}
+
+// The payment-success moment: a drawn checkmark, a ring burst, a cyan/magenta
+// confetti shower, and the tier reveal. Fast, celebratory, reduced-motion aware.
+function paymentSuccess(tier) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const o = el("div", "success-overlay");
+  o.innerHTML = `
+    <canvas class="confetti" id="confetti"></canvas>
+    <div class="success-card">
+      <div class="success-ring">
+        <svg viewBox="0 0 120 120" class="success-mark">
+          <circle class="sm-ring" cx="60" cy="60" r="52"/>
+          <path class="sm-check" d="M38 62 L54 78 L84 44"/>
+        </svg>
+      </div>
+      <div class="success-kicker">payment confirmed · on-chain</div>
+      <h2 class="success-title">Welcome to <span class="grad">${esc(tier.name)}</span></h2>
+      <p class="success-sub">Your plan is live. Every ${tier.name} module is unlocked across the console.</p>
+      <button class="btn success-cta" id="success-cta">Enter the console</button>
+    </div>`;
+  document.body.appendChild(o);
+  const done = () => { o.classList.add("out"); setTimeout(() => { o.remove(); showPricing(); }, 320); };
+  o.querySelector("#success-cta").onclick = done;
+  if (!reduce) confettiBurst(o.querySelector("#confetti"));
+  // haptic nod on supporting devices
+  if (navigator.vibrate) navigator.vibrate([12, 40, 18]);
+  setTimeout(done, 6000); // auto-continue if they linger
+}
+
+function confettiBurst(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+  const ctx = canvas.getContext("2d");
+  const colors = ["#1ee6cf", "#5cf5e4", "#ff5c9e", "#ff87b8", "#3aa0ff", "#ffffff"];
+  const cx = canvas.width / 2, cy = canvas.height * 0.34;
+  const parts = Array.from({ length: 130 }, () => {
+    const a = Math.random() * Math.PI * 2, sp = (4 + Math.random() * 9) * dpr;
+    return { x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 4 * dpr,
+      r: (3 + Math.random() * 5) * dpr, rot: Math.random() * 6, vr: (Math.random() - .5) * .4,
+      c: colors[(Math.random() * colors.length) | 0], life: 1 };
+  });
+  let raf, t0 = performance.now();
+  (function frame(now) {
+    const dt = Math.min((now - t0) / 16.7, 2); t0 = now;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    for (const p of parts) {
+      p.vy += 0.28 * dpr * dt; p.vx *= 0.99; p.x += p.vx * dt; p.y += p.vy * dt;
+      p.rot += p.vr * dt; p.life -= 0.007 * dt;
+      if (p.life > 0 && p.y < canvas.height + 40) {
+        alive = true;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.globalAlpha = Math.max(p.life, 0);
+        ctx.fillStyle = p.c; ctx.fillRect(-p.r, -p.r * .6, p.r * 2, p.r * 1.2); ctx.restore();
+      }
+    }
+    if (alive) raf = requestAnimationFrame(frame); else cancelAnimationFrame(raf);
+  })(t0);
 }
 
 // command palette
