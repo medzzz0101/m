@@ -509,7 +509,10 @@ function renderResults(res) {
   if (mapPoint) c.appendChild(mapTile(mapPoint));
 
   const wrap = el("div", "results");
-  const mods = (res.modules || []).slice().sort((a, b) => (b.ok - a.ok) || (b.findings.length - a.findings.length));
+  // The public identity card leads the dossier; then ok + richest first.
+  const lead = (m) => (m.module === "identity_card" ? 2 : 0);
+  const mods = (res.modules || []).slice().sort((a, b) =>
+    (lead(b) - lead(a)) || (b.ok - a.ok) || (b.findings.length - a.findings.length));
   if (!mods.length) wrap.innerHTML = emptyState("Nothing ran", "No modules matched this input on your plan.");
   for (const m of mods) wrap.appendChild(resultCard(m));
   c.appendChild(wrap);

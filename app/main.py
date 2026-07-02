@@ -286,12 +286,52 @@ async def pay_verify(invoice: str):
 @app.post("/api/redeem")
 async def redeem(request: Request):
     """Owner-issued license keys: enter a code, unlock its tier. Reusable forever."""
+    from . import admin
     body = await request.json()
     code = (body.get("key") or "").strip()
-    tier = config.license_keys().get(code)
+    tier = admin.all_keys().get(code)
     if not tier:
         return JSONResponse({"ok": False, "error": "invalid key"}, status_code=404)
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0].strip()
+    admin.log_redemption(code, tier, ip)
     return {"ok": True, "plan": tier, "name": config.TIER_META[tier]["name"]}
+
+
+# --- Owner panel (token-gated) ---------------------------------------------
+@app.post("/api/admin/state")
+async def admin_state(request: Request):
+    from . import admin
+    body = await request.json()
+    if not admin.check_token(body.get("token", "")):
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "?").split(",")[0].strip()
+    return {"ok": True, "your_ip": ip, **admin.state()}
+
+
+@app.post("/api/admin/keygen")
+async def admin_keygen(request: Request):
+    from . import admin
+    body = await request.json()
+    if not admin.check_token(body.get("token", "")):
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    code = admin.add_key(body.get("tier", ""))
+    if not code:
+        return JSONResponse({"ok": False, "error": "bad tier"}, status_code=400)
+    return {"ok": True, "code": code}
+
+
+@app.post("/api/admin/revoke")
+async def admin_revoke(request: Request):
+    from . import admin
+    body = await request.json()
+    if not admin.check_token(body.get("token", "")):
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    return {"ok": admin.revoke_key(body.get("code", ""))}
+
+
+@app.get("/admin")
+async def admin_page():
+    return FileResponse(WEB / "admin.html")
 
 
 # --- PWA + static -----------------------------------------------------------
