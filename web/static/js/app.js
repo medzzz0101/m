@@ -532,15 +532,16 @@ function buildHero(res) {
       const k = f.key.slice(0, 18); if (!seen.has(k)) { seen.add(k); plats.push(k); }
     }
   }
-  // a little wall of faces — real avatars from official APIs + platform CDNs
+  // a little wall of faces — real avatars from official APIs + platform CDNs.
+  // each face carries the handle it belongs to, so a click traces that account.
   const faces = []; const fseen = new Set();
   for (const n of (g.nodes || [])) {
     const im = n.meta && n.meta.img;
-    if (im && !fseen.has(im)) { fseen.add(im); faces.push(im); }
+    if (im && !fseen.has(im)) { fseen.add(im); faces.push({ u: im, h: n.value }); }
   }
   for (const m of mods) for (const f of (m.findings || [])) {
     const u = rowAvatarURL(f);
-    if (u && !fseen.has(u)) { fseen.add(u); faces.push(u); }
+    if (u && !fseen.has(u)) { fseen.add(u); faces.push({ u, h: f.pivot }); }
   }
 
   const ini = (handle.match(/[a-z0-9]/gi) || ["?"]).slice(0, 2).join("").toUpperCase();
@@ -557,9 +558,12 @@ function buildHero(res) {
       <div class="hero-h">@${esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
       <div class="hero-sub">${esc(sub)}</div>
       ${bio ? `<div class="hero-bio">${esc(bio.slice(0, 160))}</div>` : ""}
-      ${faces.length ? `<div class="hero-gallery">${faces.slice(0, 16).map((u) => `<img class="ga" src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("")}</div>` : ""}
+      ${faces.length ? `<div class="hero-gallery">${faces.slice(0, 16).map((f) => `<img class="ga" src="${esc(f.u)}" alt="" title="trace ${esc(f.h || "")}" data-trace="${esc(f.h || "")}" loading="lazy" onerror="this.remove()">`).join("")}</div>` : ""}
       <div class="hero-chips">${plats.slice(0, 6).map((p) => `<span class="hchip">${esc(p)}</span>`).join("")}</div>
     </div>`;
+  hero.querySelectorAll(".ga[data-trace]").forEach((img) => {
+    if (img.dataset.trace) img.onclick = () => traceHandle(img.dataset.trace);
+  });
   return hero;
 }
 
