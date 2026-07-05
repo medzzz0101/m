@@ -38,6 +38,8 @@ class IdentityCard(BaseModule):
             if r.status_code == 200:
                 d = r.json()
                 found_any = True
+                if d.get("avatar_url"):        # public profile picture → face on the graph
+                    node.meta["img"] = d["avatar_url"]
                 if d.get("name"): res.add("Name (self-set)", d["name"], Confidence.LIKELY)
                 if d.get("company"): res.add("Company (self-set)", d["company"], Confidence.INFO)
                 if d.get("location"): res.add("Location (self-set)", d["location"], Confidence.INFO)

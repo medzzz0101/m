@@ -10,6 +10,34 @@ const NODE_COLORS = {
 };
 const col = (t) => NODE_COLORS[t] || "#6d6b7e";
 
+// --- public avatars on the board ------------------------------------------
+// Faces come only from PUBLIC profile pictures: the avatar a person published
+// themselves. `meta.img` is a real URL the backend already resolved (e.g. the
+// GitHub avatar); otherwise we ask unavatar.io — a public avatar CDN — for the
+// picture of a known platform handle. No private data, just public pictures.
+const UNAVATAR = {
+  github: "github", twitter: "twitter", x: "twitter", instagram: "instagram",
+  telegram: "telegram", youtube: "youtube", tiktok: "tiktok", reddit: "reddit",
+  soundcloud: "soundcloud", dribbble: "dribbble", medium: "medium",
+  substack: "substack", gravatar: "gravatar",
+};
+function providerFor(label) {
+  const s = (label || "").toLowerCase();
+  for (const k in UNAVATAR) if (s.includes(k)) return UNAVATAR[k];
+  return null;
+}
+function avatarURL(n) {
+  if (n.meta && n.meta.img) return n.meta.img;                 // real, backend-resolved
+  if (n.type === "username" && n.value)
+    return `https://unavatar.io/github/${encodeURIComponent(n.value)}?fallback=false`;
+  if (n.type === "profile" && typeof n.value === "string") {
+    const prov = providerFor(n.label);
+    const user = n.value.slice(n.value.indexOf(":") + 1);
+    if (prov && user) return `https://unavatar.io/${prov}/${encodeURIComponent(user)}?fallback=false`;
+  }
+  return null;
+}
+
 // onSelect(node) fires when a node is clicked — the app opens an inspector panel.
 export function renderGraph(canvas, data, onSelect) {
   const ctx = canvas.getContext("2d");
@@ -29,6 +57,16 @@ export function renderGraph(canvas, data, onSelect) {
     vx: 0, vy: 0,
     r: (6 + Math.min(n.degree || 0, 6) * 2) * dpr,
   }));
+  // kick off async avatar loads — image is tainted-but-drawable (we never read
+  // pixels back), so we deliberately do NOT set crossOrigin.
+  for (const n of nodes) {
+    const url = avatarURL(n);
+    if (!url) continue;
+    const im = new Image();
+    im.onload = () => { n._av = im; n.r = Math.max(n.r, 15 * dpr); };
+    im.onerror = () => {};
+    im.src = url;
+  }
   const idx = Object.fromEntries(nodes.map((n, i) => [n.id, i]));
   const edges = data.edges
     .filter((e) => idx[e.source] !== undefined && idx[e.target] !== undefined)
@@ -90,9 +128,22 @@ export function renderGraph(canvas, data, onSelect) {
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 5 * dpr, 0, Math.PI * 2);
         ctx.strokeStyle = c; ctx.lineWidth = 1.5 * dpr; ctx.globalAlpha = .5; ctx.stroke(); ctx.globalAlpha = 1;
       }
-      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-      ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = (n === hover ? 18 : 7) * dpr;
-      ctx.fill(); ctx.shadowBlur = 0;
+      if (n._av) {
+        // clip a circle and paint the public avatar inside it
+        ctx.save();
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
+        ctx.drawImage(n._av, n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+        ctx.restore();
+        // coloured ring so the entity type still reads at a glance
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.strokeStyle = c; ctx.lineWidth = (n === hover ? 2 : 1.5) * dpr;
+        ctx.shadowColor = c; ctx.shadowBlur = (n === hover ? 18 : 7) * dpr;
+        ctx.stroke(); ctx.shadowBlur = 0;
+      } else {
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fillStyle = c; ctx.shadowColor = c; ctx.shadowBlur = (n === hover ? 18 : 7) * dpr;
+        ctx.fill(); ctx.shadowBlur = 0;
+      }
       // label: always for meaningful nodes, or on hover
       if (n === hover || (n.degree || 0) >= 1 || nodes.length <= 12) {
         const label = (n.label || n.value || "").slice(0, 24);
