@@ -165,9 +165,7 @@
   .rec td.k { margin-bottom:3px; }
   .rec td.v { font-size:13.5px; }
 }
-.pivot { margin-left:8px; font-size:10px; font-family:var(--mono); color:var(--accent-2);
-  border:1px solid var(--accent-line); border-radius:var(--pill); padding:1px 7px; cursor:pointer;
-  background:var(--accent-soft); }
+.pivot { margin-left:8px; font-size:11px; font-family:var(--mono); color:var(--accent-2); border:1px solid var(--accent-line); border-radius:var(--pill); padding:3px 10px; cursor:pointer; background:var(--accent-soft); white-space:nowrap; display:inline-block; }
 .pivot:hover { background:var(--accent-line); }
 
 /* confidence pills */

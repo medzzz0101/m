@@ -48,7 +48,7 @@ class IdentityCard(BaseModule):
                 if d.get("twitter_username"):
                     tw = d["twitter_username"]
                     res.add("Twitter (self-declared)", f"@{tw}", Confidence.LIKELY,
-                            link=f"https://twitter.com/{tw}")
+                            link=f"https://twitter.com/{tw}", pivot=tw)
                     tn = res.node("username", tw, label=f"@{tw}"); res.edge(node.id, tn.id, "same_as")
         except Exception:
             pass
@@ -65,7 +65,7 @@ class IdentityCard(BaseModule):
                 for p in proofs:
                     svc = p.get("proof_type", "account"); name = p.get("nametag", "")
                     res.add(f"Linked: {svc} (self-claimed)", name, Confidence.CONFIRMED,
-                            link=p.get("service_url"))
+                            link=p.get("service_url"), pivot=name)
                     pn = res.node("username", f"{svc}:{name}", label=name)
                     res.edge(node.id, pn.id, "same_as")
         except Exception:

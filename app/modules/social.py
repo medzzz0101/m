@@ -139,7 +139,7 @@ class UsernamePresence(BaseModule):
             url = site["u"].format(u=user)
             if ok is True:
                 found += 1
-                res.add(site["n"], "profile exists", Confidence.LIKELY, link=url)
+                res.add(site["n"], "profile exists", Confidence.LIKELY, link=url, pivot=user)
                 pn = res.node("profile", f"{site['n']}:{user}", label=site["n"])
                 res.edge(uname_node.id, pn.id, "found_on")
             elif ok is None:

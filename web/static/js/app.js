@@ -614,12 +614,18 @@ function findingRow(f) {
   const val = f.link
     ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.value)}</a>`
     : esc(f.value);
-  const pivot = f.pivot ? `<span class="pivot" data-pivot="${esc(f.pivot)}">↳ pivot</span>` : "";
+  const pivot = f.pivot ? `<span class="pivot" data-pivot="${esc(f.pivot)}">↳ trace accounts</span>` : "";
   tr.innerHTML = `<td class="k">${esc(f.key)} <span class="pill ${f.confidence}">${f.confidence}</span></td>
     <td class="v">${val}${pivot}</td>`;
   const pv = tr.querySelector(".pivot");
-  if (pv) pv.onclick = () => { const i = ensureInput(); i.value = pv.dataset.pivot; onNav("home"); setTimeout(() => { $("#target").value = pv.dataset.pivot; runAll(); }, 50); };
+  if (pv) pv.onclick = () => traceHandle(pv.dataset.pivot);
   return tr;
+}
+// Click a discovered handle → search it as a person and reveal their accounts.
+function traceHandle(handle) {
+  state.mode = "username";
+  showHome();
+  setTimeout(() => { const i = $("#target"); if (i) { i.value = handle; i.dispatchEvent(new Event("input")); } runAll(); }, 40);
 }
 function ensureInput() { if (!$("#target")) showHome(); return $("#target"); }
 

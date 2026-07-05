@@ -74,7 +74,7 @@ class UsernameScan(BaseModule):
         by_cat: dict[str, int] = {}
         for name, url, cat in sorted(hits):
             by_cat[cat] = by_cat.get(cat, 0) + 1
-            res.add(name, url, Confidence.LIKELY, link=url)
+            res.add(name, url, Confidence.LIKELY, link=url, pivot=user)
             pn = res.node("profile", f"{name}:{user}", label=name)
             res.edge(unode.id, pn.id, "found_on")
         res.extra["found"] = len(hits)
