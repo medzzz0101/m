@@ -318,6 +318,19 @@ class MastodonProfile(BaseModule):
         res.add("Followers", d.get("followers_count", 0), Confidence.CONFIRMED)
         res.add("Posts", d.get("statuses_count", 0), Confidence.CONFIRMED)
         res.add("Created", (d.get("created_at") or "")[:10], Confidence.CONFIRMED)
+        # recent PUBLIC posts (the account's own public timeline)
+        try:
+            sr = await get_client().get(
+                f"https://{host}/api/v1/accounts/{d['id']}/statuses",
+                params={"limit": 5, "exclude_replies": "true", "exclude_reblogs": "true"})
+            for st in (sr.json() if sr.status_code == 200 else [])[:5]:
+                txt = html.unescape(re.sub(r"<[^>]+>", " ", st.get("content") or "")).strip()
+                txt = re.sub(r"\s+", " ", txt)
+                if not txt: continue
+                when = (st.get("created_at") or "")[:10]
+                res.add(f"Post · {when}", txt[:200], Confidence.INFO, link=st.get("url"))
+        except Exception:
+            pass
         res.summary = f"@{user}@{host}: {d.get('followers_count',0)} followers"
         return res
 
@@ -353,6 +366,28 @@ class BlueskyProfile(BaseModule):
         res.add("Followers", d.get("followersCount", 0), Confidence.CONFIRMED)
         res.add("Following", d.get("followsCount", 0), Confidence.CONFIRMED)
         res.add("Posts", d.get("postsCount", 0), Confidence.CONFIRMED)
+        # recent PUBLIC posts from the author's public feed
+        try:
+            fr = await get_client().get(
+                "https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed",
+                params={"actor": h, "limit": 8, "filter": "posts_no_replies"})
+            feed = fr.json().get("feed", []) if fr.status_code == 200 else []
+            shown = 0
+            for item in feed:
+                post = item.get("post", {})
+                if item.get("reason"): continue          # skip reposts
+                rec = post.get("record", {})
+                txt = re.sub(r"\s+", " ", (rec.get("text") or "")).strip()
+                if not txt: continue
+                when = (rec.get("createdAt") or "")[:10]
+                uri = post.get("uri", "")
+                rkey = uri.rsplit("/", 1)[-1] if uri else ""
+                link = f"https://bsky.app/profile/{h}/post/{rkey}" if rkey else None
+                res.add(f"Post · {when}", txt[:200], Confidence.INFO, link=link)
+                shown += 1
+                if shown >= 5: break
+        except Exception:
+            pass
         res.summary = f"@{h}: {d.get('followersCount',0)} followers"
         return res
 
