@@ -157,6 +157,9 @@
 .rec td.v { font-family:var(--mono); color:var(--text); overflow-wrap:anywhere; }
 .rec td.v a { color:var(--accent-2); text-decoration:none; }
 .rec td.v a:hover { text-decoration:underline; }
+.row-av { width:22px; height:22px; border-radius:50%; object-fit:cover;
+  vertical-align:middle; margin-right:8px; border:1px solid var(--line-strong);
+  background:var(--surface-2); }
 /* On phones, stack key above value so long mono values get the full width. */
 @media (max-width:640px) {
   .rec, .rec tbody, .rec tr, .rec td { display:block; width:auto; }

@@ -609,14 +609,34 @@ function resultCard(m) {
   return card;
 }
 
+// Public-avatar lookup for a result row — a face for the "wall of faces" table.
+// Same rule as the graph: public profile pictures only, via the unavatar CDN.
+const ROW_UNAVATAR = {
+  github: "github", twitter: "twitter", x: "twitter", instagram: "instagram",
+  telegram: "telegram", youtube: "youtube", tiktok: "tiktok", reddit: "reddit",
+  soundcloud: "soundcloud", dribbble: "dribbble", medium: "medium",
+  substack: "substack", gravatar: "gravatar",
+};
+function rowAvatarURL(f) {
+  if (!f.pivot) return null;
+  const s = (f.key || "").toLowerCase();
+  let prov = null;
+  for (const k in ROW_UNAVATAR) if (s.includes(k)) { prov = ROW_UNAVATAR[k]; break; }
+  if (!prov) return null;
+  return `https://unavatar.io/${prov}/${encodeURIComponent(f.pivot)}?fallback=false`;
+}
 function findingRow(f) {
   const tr = el("tr");
   const val = f.link
     ? `<a href="${esc(f.link)}" target="_blank" rel="noopener">${esc(f.value)}</a>`
     : esc(f.value);
+  const av = rowAvatarURL(f);
+  const thumb = av
+    ? `<img class="row-av" src="${esc(av)}" alt="" loading="lazy" onerror="this.remove()">`
+    : "";
   const pivot = f.pivot ? `<span class="pivot" data-pivot="${esc(f.pivot)}">↳ trace accounts</span>` : "";
   tr.innerHTML = `<td class="k">${esc(f.key)} <span class="pill ${f.confidence}">${f.confidence}</span></td>
-    <td class="v">${val}${pivot}</td>`;
+    <td class="v">${thumb}${val}${pivot}</td>`;
   const pv = tr.querySelector(".pivot");
   if (pv) pv.onclick = () => traceHandle(pv.dataset.pivot);
   return tr;
