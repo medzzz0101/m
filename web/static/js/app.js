@@ -532,6 +532,17 @@ function buildHero(res) {
       const k = f.key.slice(0, 18); if (!seen.has(k)) { seen.add(k); plats.push(k); }
     }
   }
+  // a little wall of faces — real avatars from official APIs + platform CDNs
+  const faces = []; const fseen = new Set();
+  for (const n of (g.nodes || [])) {
+    const im = n.meta && n.meta.img;
+    if (im && !fseen.has(im)) { fseen.add(im); faces.push(im); }
+  }
+  for (const m of mods) for (const f of (m.findings || [])) {
+    const u = rowAvatarURL(f);
+    if (u && !fseen.has(u)) { fseen.add(u); faces.push(u); }
+  }
+
   const ini = (handle.match(/[a-z0-9]/gi) || ["?"]).slice(0, 2).join("").toUpperCase();
 
   const hero = el("div", "hero");
@@ -546,6 +557,7 @@ function buildHero(res) {
       <div class="hero-h">@${esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
       <div class="hero-sub">${esc(sub)}</div>
       ${bio ? `<div class="hero-bio">${esc(bio.slice(0, 160))}</div>` : ""}
+      ${faces.length ? `<div class="hero-gallery">${faces.slice(0, 16).map((u) => `<img class="ga" src="${esc(u)}" alt="" loading="lazy" onerror="this.remove()">`).join("")}</div>` : ""}
       <div class="hero-chips">${plats.slice(0, 6).map((p) => `<span class="hchip">${esc(p)}</span>`).join("")}</div>
     </div>`;
   return hero;
