@@ -109,6 +109,23 @@
   border:1px solid var(--line); border-radius:var(--r1); padding:6px 12px; }
 .rtoolbar .rstat { font-size:12px; color:var(--text-3); }
 
+/* subject hero — the person's public face */
+.hero { display:flex; align-items:center; gap:var(--s3); margin-bottom:var(--s4);
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r2); padding:var(--s3); }
+.hero-av { position:relative; width:64px; height:64px; flex:0 0 64px; border-radius:50%;
+  overflow:hidden; border:1px solid var(--line-strong); background:var(--surface-2); }
+.hero-av img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.hero-ini { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-weight:700; font-size:22px; color:var(--accent-2); }
+.hero-meta { min-width:0; }
+.hero-h { font-family:var(--display,inherit); font-size:19px; font-weight:700; color:var(--text);
+  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.hero-name { font-family:var(--sans,inherit); font-size:13px; font-weight:500; color:var(--text-2); }
+.hero-sub { font-size:12.5px; color:var(--text-3); margin-top:3px; }
+.hero-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.hchip { font-family:var(--mono); font-size:10.5px; color:var(--text-2);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:3px 9px; }
+
 /* results dashboard tiles */
 .dash { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s2); margin-bottom:var(--s4); }
 .dash-cell { background:var(--surface); border:1px solid var(--line); border-radius:var(--r2);

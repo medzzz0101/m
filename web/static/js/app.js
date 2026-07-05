@@ -497,6 +497,55 @@ function buildHighlights(res) {
   return out.slice(0, 7);
 }
 
+// A visual subject header: the person's public face + how far their handle reaches.
+function buildHero(res) {
+  if ((res.input_type || "") !== "username") return null;
+  const handle = String(res.target || "").replace(/^@+/, "").trim();
+  if (!handle) return null;
+  const mods = res.modules || [];
+  const g = res.graph || { nodes: [] };
+
+  // real avatar the backend resolved (e.g. GitHub), else the public CDN
+  const central = (g.nodes || []).find((n) => n.type === "username" && n.value === handle);
+  const realImg = central && central.meta && central.meta.img;
+  const av = realImg || `https://unavatar.io/github/${encodeURIComponent(handle)}?fallback=false`;
+
+  // counts
+  let profiles = 0;
+  for (const id of ["username_scan", "username_presence"]) {
+    const m = mods.find((x) => x.module === id);
+    if (m && m.extra && m.extra.found != null) profiles = Math.max(profiles, m.extra.found);
+  }
+  if (!profiles) profiles = (g.nodes || []).filter((n) => n.type === "profile").length;
+  const ic = mods.find((m) => m.module === "identity_card");
+  const linked = ic ? (ic.findings || []).filter((f) => f.key.startsWith("Linked:")).length : 0;
+  const nameF = ic && (ic.findings || []).find((f) => f.key.startsWith("Name"));
+
+  // top platforms with a found profile
+  const seen = new Set(); const plats = [];
+  for (const m of mods) for (const f of (m.findings || [])) {
+    if (f.link && f.pivot && f.key && !f.key.startsWith("Linked") && !f.key.startsWith("Scope")) {
+      const k = f.key.slice(0, 18); if (!seen.has(k)) { seen.add(k); plats.push(k); }
+    }
+  }
+  const ini = (handle.match(/[a-z0-9]/gi) || ["?"]).slice(0, 2).join("").toUpperCase();
+
+  const hero = el("div", "hero");
+  const sub = [
+    profiles ? `${profiles} public profile${profiles === 1 ? "" : "s"}` : null,
+    linked ? `${linked} self-declared link${linked === 1 ? "" : "s"}` : null,
+  ].filter(Boolean).join(" · ") || "public footprint";
+  hero.innerHTML = `
+    <div class="hero-av"><span class="hero-ini">${esc(ini)}</span>
+      <img src="${esc(av)}" alt="" onerror="this.remove()"></div>
+    <div class="hero-meta">
+      <div class="hero-h">@${esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
+      <div class="hero-sub">${esc(sub)}</div>
+      <div class="hero-chips">${plats.slice(0, 6).map((p) => `<span class="hchip">${esc(p)}</span>`).join("")}</div>
+    </div>`;
+  return hero;
+}
+
 // ---------------------------------------------------------------- RESULTS view
 function showResults(loading = false) {
   state.view = "results";
@@ -531,6 +580,10 @@ function renderResults(res) {
   const ex = el("button", "chip", "⬇ Export");
   ex.onclick = () => exportReport(res); bar.appendChild(ex);
   c.appendChild(bar);
+
+  // hero dossier — a face for the subject + at-a-glance reach
+  const hero = buildHero(res);
+  if (hero) c.appendChild(hero);
 
   // dashboard: quick metric tiles for the current target
   const dash = el("div", "dash");
