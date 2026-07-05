@@ -233,6 +233,9 @@
 .leg { font-size:10px; font-family:var(--mono); color:var(--text-2); display:flex; align-items:center; gap:5px;
   background:rgba(0,0,0,.4); border:1px solid var(--line); border-radius:var(--pill); padding:2px 8px; }
 .leg i { width:8px; height:8px; border-radius:2px; }
+.leg .ln { width:14px; height:0; border-radius:0; border-top-width:2px; border-top-style:solid; }
+.leg .ln.verified { border-top-color:#8b7cf7; }
+.leg .ln.presence { border-top-color:rgba(30,230,207,.6); }
 .graph-empty { position:absolute; inset:0; display:grid; place-items:center; color:var(--text-3); font-size:13px; }
 
 /* ---- Map ---- */

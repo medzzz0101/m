@@ -109,13 +109,22 @@ export function renderGraph(canvas, data, onSelect) {
     ctx.clearRect(0, 0, W(), H());
     ctx.save();
     ctx.translate(pan.x, pan.y);
-    // edges — cyan, faintly glowing, brighter when they touch the hovered node
-    ctx.lineWidth = dpr;
+    // edges — VERIFIED "same person" links (same_as) render as solid violet;
+    // mere presence / relation links stay a faint cyan. This reads confidence
+    // at a glance: bright = provably the same person, faint = a profile exists.
     for (const e of edges) {
       const a = nodes[e.s], b = nodes[e.t];
       const lit = hover && (a === hover || b === hover);
-      ctx.strokeStyle = lit ? "rgba(30,230,207,0.55)" : "rgba(30,230,207,0.14)";
-      ctx.shadowColor = "rgba(30,230,207,0.5)"; ctx.shadowBlur = lit ? 8 * dpr : 0;
+      const verified = e.kind === "same_as";
+      if (verified) {
+        ctx.strokeStyle = lit ? "rgba(139,124,247,0.85)" : "rgba(139,124,247,0.42)";
+        ctx.shadowColor = "rgba(139,124,247,0.6)"; ctx.shadowBlur = lit ? 10 * dpr : 3 * dpr;
+        ctx.lineWidth = 1.6 * dpr;
+      } else {
+        ctx.strokeStyle = lit ? "rgba(30,230,207,0.5)" : "rgba(30,230,207,0.13)";
+        ctx.shadowColor = "rgba(30,230,207,0.5)"; ctx.shadowBlur = lit ? 8 * dpr : 0;
+        ctx.lineWidth = dpr;
+      }
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
       ctx.shadowBlur = 0;
     }

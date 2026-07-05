@@ -792,10 +792,13 @@ function showGraph() {
     <div class="graph-legend" id="legend"></div>
     <div class="node-panel" id="node-panel" hidden></div>`;
   c.appendChild(wrap);
-  // legend
+  // legend — node types + the two edge kinds (verified vs presence)
   const types = [...new Set(g.nodes.map((n) => n.type))];
+  const hasVerified = (g.edges || []).some((e) => e.kind === "same_as");
   $("#legend").innerHTML = types.map((t) =>
-    `<span class="leg"><i style="background:var(--n-${t},#6d6b7e)"></i>${t}</span>`).join("");
+    `<span class="leg"><i style="background:var(--n-${t},#6d6b7e)"></i>${t}</span>`).join("")
+    + (hasVerified ? `<span class="leg edge"><i class="ln verified"></i>same person</span>` : "")
+    + `<span class="leg edge"><i class="ln presence"></i>presence</span>`;
   if (state.graphInstance) state.graphInstance.stop();
 
   const pivot = (value) => { ensureInput(); onNav("home"); setTimeout(() => { $("#target").value = value; runAll(); }, 50); };
