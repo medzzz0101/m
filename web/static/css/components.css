@@ -60,6 +60,14 @@
   background:var(--bg); border:1px dashed var(--line-strong); color:var(--text-2); cursor:pointer;
   transition:all var(--t-fast); }
 .ex:hover { border-style:solid; border-color:var(--accent-line); color:var(--accent-2); }
+.lk-recent { display:flex; align-items:center; gap:var(--s2); margin-top:var(--s2); flex-wrap:wrap; }
+.rec-chip { font-size:12px; font-family:var(--mono); padding:5px 11px; border-radius:var(--pill);
+  background:var(--surface); border:1px solid var(--line); color:var(--text-2); cursor:pointer;
+  transition:all var(--t-fast); }
+.rec-chip:hover { border-color:var(--accent-line); color:var(--accent-2); }
+.rec-clear { font-size:11px; font-family:var(--mono); width:24px; height:24px; border-radius:50%;
+  background:transparent; border:1px solid var(--line); color:var(--text-3); cursor:pointer; }
+.rec-clear:hover { color:var(--text); border-color:var(--line-strong); }
 
 /* ---- Stat strip ---- */
 .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--s3); margin-top:var(--s5); }

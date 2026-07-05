@@ -189,9 +189,11 @@ function showHome() {
       <button class="run-btn" id="run-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg> Search</button>
     </div>
     <div class="lk-ex" id="lk-ex"></div>
+    <div class="lk-recent" id="lk-recent"></div>
     <div class="lk-checks" id="lk-checks"></div>`;
   c.appendChild(wrap);
   renderMode();
+  renderRecent();
   bindCommandBar();
   $$("#seg .seg-b").forEach((b) => b.onclick = () => {
     state.mode = b.dataset.m;
@@ -212,6 +214,33 @@ function renderMode() {
   });
   $("#lk-checks").innerHTML = `<div class="lk-checks-h">What we check</div>` +
     m.checks.map((t) => `<div class="lk-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg>${esc(t)}</div>`).join("");
+}
+
+// --- recent searches (local, private to this browser) ----------------------
+function recentGet() { try { return JSON.parse(localStorage.getItem("recent") || "[]"); } catch { return []; } }
+function recentAdd(q, mode) {
+  if (!q) return;
+  let list = recentGet().filter((r) => !(r.q === q && r.mode === mode));
+  list.unshift({ q, mode, t: Date.now() });
+  localStorage.setItem("recent", JSON.stringify(list.slice(0, 8)));
+}
+function renderRecent() {
+  const box = $("#lk-recent"); if (!box) return;
+  const list = recentGet();
+  if (!list.length) { box.innerHTML = ""; return; }
+  box.innerHTML = `<span class="ex-label">recent</span>` +
+    list.map((r) => `<button class="rec-chip" data-q="${esc(r.q)}" data-m="${esc(r.mode)}" title="${esc(r.mode)}">${esc(r.q)}</button>`).join("") +
+    `<button class="rec-clear" id="rec-clear" title="clear">✕</button>`;
+  box.querySelectorAll(".rec-chip").forEach((b) => b.onclick = () => {
+    if (b.dataset.m && MODES[b.dataset.m]) {
+      state.mode = b.dataset.m;
+      $$("#seg .seg-b").forEach((x) => x.classList.toggle("on", x.dataset.m === state.mode));
+      renderMode();
+    }
+    const inp = $("#target"); inp.value = b.dataset.q; inp.dispatchEvent(new Event("input")); runAll();
+  });
+  const clr = $("#rec-clear");
+  if (clr) clr.onclick = () => { localStorage.removeItem("recent"); renderRecent(); };
 }
 
 function commandBar() {
@@ -327,6 +356,7 @@ function setProgress(on) { $("#progress").classList.toggle("on", on); if (on) $(
 async function runAll() {
   const target = $("#target")?.value.trim();
   if (!target && !state.upload) return toast("Enter a target first");
+  if (target) recentAdd(target, state.mode);
   setProgress(true);
   state.view = "results";
   syncTabs("results");
@@ -499,16 +529,21 @@ function buildHighlights(res) {
 
 // A visual subject header: the person's public face + how far their handle reaches.
 function buildHero(res) {
-  if ((res.input_type || "") !== "username") return null;
+  const kind = res.input_type || "";
+  if (kind !== "username" && kind !== "email") return null;
+  const isEmail = kind === "email";
   const handle = String(res.target || "").replace(/^@+/, "").trim();
   if (!handle) return null;
   const mods = res.modules || [];
   const g = res.graph || { nodes: [] };
 
-  // real avatar the backend resolved (e.g. GitHub), else the public CDN
-  const central = (g.nodes || []).find((n) => n.type === "username" && n.value === handle);
+  // real avatar the backend resolved (GitHub / Gravatar…), else the public CDN
+  const central = (g.nodes || []).find((n) =>
+    (isEmail ? n.type === "email" : n.type === "username") && n.value === handle);
   const realImg = central && central.meta && central.meta.img;
-  const av = realImg || `https://unavatar.io/github/${encodeURIComponent(handle)}?fallback=false`;
+  const av = realImg
+    || (isEmail ? `https://unavatar.io/${encodeURIComponent(handle)}?fallback=false`
+                : `https://unavatar.io/github/${encodeURIComponent(handle)}?fallback=false`);
 
   // counts
   let profiles = 0;
@@ -517,9 +552,16 @@ function buildHero(res) {
     if (m && m.extra && m.extra.found != null) profiles = Math.max(profiles, m.extra.found);
   }
   if (!profiles) profiles = (g.nodes || []).filter((n) => n.type === "profile").length;
-  const ic = mods.find((m) => m.module === "identity_card");
-  const linked = ic ? (ic.findings || []).filter((f) => f.key.startsWith("Linked:")).length : 0;
-  const nameF = ic && (ic.findings || []).find((f) => f.key.startsWith("Name"));
+  // self-declared / self-verified account links, from any module (identity card,
+  // Gravatar verified accounts, Lobsters/GitHub self-links…)
+  let linked = 0;
+  for (const m of mods) for (const f of (m.findings || []))
+    if (f.pivot && (f.key.startsWith("Linked:") || /self-linked|self-declared|verified|self-listed/i.test(f.key))) linked++;
+  const nameF = (() => {
+    for (const m of mods) for (const f of (m.findings || []))
+      if (/^Name/i.test(f.key || "") && f.value) return f;
+    return null;
+  })();
   // public bio from whichever official API returned one
   let bio = "";
   for (const m of mods) for (const f of (m.findings || []))
@@ -544,18 +586,24 @@ function buildHero(res) {
     if (u && !fseen.has(u)) { fseen.add(u); faces.push({ u, h: f.pivot }); }
   }
 
-  const ini = (handle.match(/[a-z0-9]/gi) || ["?"]).slice(0, 2).join("").toUpperCase();
+  const ini = ((isEmail ? handle.split("@")[0] : handle).match(/[a-z0-9]/gi) || ["?"])
+    .slice(0, 2).join("").toUpperCase();
+  // breach-list count (email) — names of lists only, never contents
+  let breaches = null;
+  const ebx = mods.find((m) => m.module === "email_exposure");
+  if (ebx && ebx.extra && ebx.extra.breach_count != null) breaches = ebx.extra.breach_count;
 
   const hero = el("div", "hero");
   const sub = [
     profiles ? `${profiles} public profile${profiles === 1 ? "" : "s"}` : null,
-    linked ? `${linked} self-declared link${linked === 1 ? "" : "s"}` : null,
+    linked ? `${linked} ${isEmail ? "verified account" : "self-declared link"}${linked === 1 ? "" : "s"}` : null,
+    breaches != null ? `${breaches} breach list${breaches === 1 ? "" : "s"}` : null,
   ].filter(Boolean).join(" · ") || "public footprint";
   hero.innerHTML = `
     <div class="hero-av"><span class="hero-ini">${esc(ini)}</span>
       <img src="${esc(av)}" alt="" onerror="this.remove()"></div>
     <div class="hero-meta">
-      <div class="hero-h">@${esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
+      <div class="hero-h">${isEmail ? esc(handle) : "@" + esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
       <div class="hero-sub">${esc(sub)}</div>
       ${bio ? `<div class="hero-bio">${esc(bio.slice(0, 160))}</div>` : ""}
       ${faces.length ? `<div class="hero-gallery">${faces.slice(0, 16).map((f) => `<img class="ga" src="${esc(f.u)}" alt="" title="trace ${esc(f.h || "")}" data-trace="${esc(f.h || "")}" loading="lazy" onerror="this.remove()">`).join("")}</div>` : ""}
