@@ -458,6 +458,49 @@ async function runSingle(moduleId) {
   }
 }
 
+// Pull the highest-signal facts across modules into a dossier summary.
+function buildHighlights(res) {
+  const out = [];
+  const mod = (id) => (res.modules || []).find((m) => m.module === id);
+  const find = (m, key) => m && (m.findings || []).find((f) => f.key === key || f.key.startsWith(key));
+
+  // public profiles found
+  let profiles = 0;
+  for (const id of ["username_scan", "username_presence"]) {
+    const m = mod(id); if (m && m.extra && m.extra.found != null) profiles = Math.max(profiles, m.extra.found);
+  }
+  if (profiles) out.push({ k: "profiles", v: `${profiles} public`, kind: "accent" });
+
+  // breach exposure (email)
+  const eb = mod("email_exposure");
+  if (eb && eb.extra && eb.extra.breach_count != null)
+    out.push({ k: "breaches", v: `${eb.extra.breach_count} lists`, kind: eb.extra.breach_count ? "warn" : "good" });
+
+  // name / masked email from identity card or github
+  const ic = mod("identity_card") || mod("github_profile");
+  const nm = find(ic, "Name");
+  if (nm) out.push({ k: "name", v: nm.value.slice(0, 40), kind: "" });
+  const em = find(ic, "Public email");
+  if (em) out.push({ k: "email", v: em.value, kind: "" });
+
+  // location (ip)
+  const geo = mod("ip_geo");
+  const loc = find(geo, "Location");
+  if (loc && loc.value !== "—") out.push({ k: "location", v: loc.value.slice(0, 36), kind: "" });
+
+  // phone metadata
+  const ph = mod("phone_info");
+  const reg = find(ph, "Region"); const car = find(ph, "Carrier");
+  if (reg && reg.value !== "—") out.push({ k: "region", v: reg.value.slice(0, 30), kind: "" });
+  if (car && car.value && car.value !== "—") out.push({ k: "carrier", v: car.value.slice(0, 24), kind: "" });
+
+  // subdomains / attack surface
+  for (const id of ["subdomain_enum", "subdomains_ct"]) {
+    const m = mod(id); if (m && m.extra && m.extra.count) { out.push({ k: "subdomains", v: `${m.extra.count}`, kind: "accent" }); break; }
+  }
+  return out.slice(0, 7);
+}
+
 // ---------------------------------------------------------------- RESULTS view
 function showResults(loading = false) {
   state.view = "results";
@@ -503,6 +546,15 @@ function renderResults(res) {
   ];
   dash.innerHTML = mm.map(([n, l]) => `<div class="dash-cell"><div class="dash-n">${n}</div><div class="dash-l">${l}</div></div>`).join("");
   c.appendChild(dash);
+
+  // dossier summary — the key facts pulled to the top
+  const hl = buildHighlights(res);
+  if (hl.length) {
+    const box = el("div", "dossier");
+    box.innerHTML = `<div class="dossier-h">Dossier summary</div>
+      <div class="dossier-chips">${hl.map((h) => `<span class="dchip ${h.kind}"><span class="dk">${esc(h.k)}</span>${esc(h.v)}</span>`).join("")}</div>`;
+    c.appendChild(box);
+  }
 
   // map (if any module returned a point)
   const mapPoint = collectMapPoint(res);

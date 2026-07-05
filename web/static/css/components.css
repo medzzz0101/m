@@ -433,3 +433,16 @@
 .np-pivot { background:var(--accent); color:#0c0a1e; }
 .np-pivot:hover { background:var(--accent-2); }
 @media(max-width:640px){ .node-panel{ position:fixed; top:auto; bottom:calc(var(--tabbar) + 12px); left:12px; right:12px; width:auto; } }
+
+/* ---- Dossier summary strip ---- */
+.dossier { margin-bottom:var(--s3); }
+.dossier-h { font-family:var(--mono); font-size:10px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-3); margin-bottom:8px; }
+.dossier-chips { display:flex; flex-wrap:wrap; gap:8px; }
+.dchip { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--text);
+  background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:8px 12px; }
+.dchip .dk { font-family:var(--mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-3); }
+.dchip.accent { border-color:var(--accent-line); }
+.dchip.accent .dk { color:var(--accent-2); }
+.dchip.warn { border-color:var(--possible-s); } .dchip.warn .dk { color:var(--possible); }
+.dchip.good { border-color:var(--confirmed-s); } .dchip.good .dk { color:var(--confirmed); }
