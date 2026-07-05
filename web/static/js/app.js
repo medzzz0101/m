@@ -520,6 +520,10 @@ function buildHero(res) {
   const ic = mods.find((m) => m.module === "identity_card");
   const linked = ic ? (ic.findings || []).filter((f) => f.key.startsWith("Linked:")).length : 0;
   const nameF = ic && (ic.findings || []).find((f) => f.key.startsWith("Name"));
+  // public bio from whichever official API returned one
+  let bio = "";
+  for (const m of mods) for (const f of (m.findings || []))
+    if (!bio && /^Bio/i.test(f.key || "") && f.value) bio = f.value;
 
   // top platforms with a found profile
   const seen = new Set(); const plats = [];
@@ -541,6 +545,7 @@ function buildHero(res) {
     <div class="hero-meta">
       <div class="hero-h">@${esc(handle)}${nameF ? `<span class="hero-name">${esc(nameF.value.slice(0, 40))}</span>` : ""}</div>
       <div class="hero-sub">${esc(sub)}</div>
+      ${bio ? `<div class="hero-bio">${esc(bio.slice(0, 160))}</div>` : ""}
       <div class="hero-chips">${plats.slice(0, 6).map((p) => `<span class="hchip">${esc(p)}</span>`).join("")}</div>
     </div>`;
   return hero;

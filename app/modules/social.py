@@ -10,6 +10,7 @@ this name exist on platform X?" — the same thing you'd learn by opening the UR
 from __future__ import annotations
 
 import asyncio
+import html
 import json
 import re
 
@@ -177,6 +178,8 @@ class GithubProfile(BaseModule):
             res.ok = False; res.error = f"GitHub API HTTP {r.status_code}"; return res
         d = r.json()
         node = res.node("username", user, label=f"@{user}")
+        if d.get("avatar_url"):        # real public avatar → face on the graph/hero
+            node.meta["img"] = d["avatar_url"]
         for k, label, conf in [
             ("name", "Name", Confidence.INFO), ("company", "Company", Confidence.INFO),
             ("blog", "Website", Confidence.INFO), ("location", "Location (self-set)", Confidence.INFO),
@@ -306,9 +309,12 @@ class MastodonProfile(BaseModule):
         if r.status_code != 200:
             res.summary = f"No public Mastodon account @{user}@{host}"; return res
         d = r.json()
-        res.node("username", f"{user}@{host}", label=f"@{user}")
+        node = res.node("username", f"{user}@{host}", label=f"@{user}")
+        if d.get("avatar"): node.meta["img"] = d["avatar"]
         res.add("Display name", d.get("display_name", "—"), Confidence.CONFIRMED,
                 link=d.get("url"))
+        bio = html.unescape(re.sub(r"<[^>]+>", "", d.get("note") or "")).strip()
+        if bio: res.add("Bio (public)", bio[:220], Confidence.INFO)
         res.add("Followers", d.get("followers_count", 0), Confidence.CONFIRMED)
         res.add("Posts", d.get("statuses_count", 0), Confidence.CONFIRMED)
         res.add("Created", (d.get("created_at") or "")[:10], Confidence.CONFIRMED)
@@ -338,9 +344,12 @@ class BlueskyProfile(BaseModule):
         if r.status_code != 200:
             res.summary = f"No public Bluesky profile for {h}"; return res
         d = r.json()
-        res.node("username", h, label=f"@{h}")
+        node = res.node("username", h, label=f"@{h}")
+        if d.get("avatar"): node.meta["img"] = d["avatar"]
         res.add("Display name", d.get("displayName", "—"), Confidence.CONFIRMED,
                 link=f"https://bsky.app/profile/{h}")
+        bio = (d.get("description") or "").strip()
+        if bio: res.add("Bio (public)", bio[:220], Confidence.INFO)
         res.add("Followers", d.get("followersCount", 0), Confidence.CONFIRMED)
         res.add("Following", d.get("followsCount", 0), Confidence.CONFIRMED)
         res.add("Posts", d.get("postsCount", 0), Confidence.CONFIRMED)
