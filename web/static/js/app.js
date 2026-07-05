@@ -149,21 +149,17 @@ function onNav(key) {
 // ---------------------------------------------------------------- HOME (simple)
 // Three focused lookups. Each just searches the LEGAL, public-data sources for
 // that input type; the engine picks the right modules automatically.
+// Social-only: a person's public social footprint. Username + Email.
 const MODES = {
   username: {
     label: "Username", icon: `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>`,
     ph: "@username or social handle…", ex: ["octocat", "torvalds", "jack"],
-    checks: ["Public profiles across 660+ platforms", "Where the handle is present online", "Public bio / follower counts where shown"],
+    checks: ["Public profiles across 660+ platforms", "Which social & messaging accounts exist", "Public bio, links & self-declared identity"],
   },
   email: {
     label: "Email", icon: `<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>`,
     ph: "name@example.com…", ex: ["someone@example.com"],
-    checks: ["Which public data breaches list this email — names only, no passwords", "Public Gravatar profile & linked accounts", "Self-exposure score"],
-  },
-  phone: {
-    label: "Phone", icon: `<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2 4.2 2 2 0 0 1 4 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.6a16 16 0 0 0 6 6l1.1-1.1a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.7.7A2 2 0 0 1 22 16.9z"/>`,
-    ph: "+1 415 555 2671 (with country code)…", ex: ["+14155552671", "+447911123456"],
-    checks: ["Country, region & carrier (metadata)", "Line type & timezone", "Valid-number check — never the owner's identity"],
+    checks: ["Public Gravatar profile & linked social accounts", "Which public breaches list it — names only, no passwords", "Self-exposure score"],
   },
 };
 
@@ -672,11 +668,57 @@ function showGraph() {
       ${link ? `<a class="np-link" href="${esc(link)}" target="_blank" rel="noopener">open ↗</a>` : ""}
       <div class="np-sec">Connections · ${(neighbours || []).length}</div>
       <div class="np-conns">${nb.map((n) => `<span class="np-conn" style="border-color:var(--n-${n.type},#333)">${esc(n.label || n.value)}</span>`).join("") || `<span class="np-muted">none</span>`}</div>
-      <button class="btn np-pivot" id="np-pivot" style="width:100%;margin-top:14px">Search this ↳</button>`;
+      <button class="btn np-expand" id="np-expand" style="width:100%;margin-top:14px">⤢ Expand on board</button>
+      <button class="np-pivot2" id="np-pivot" style="width:100%;margin-top:8px">Search this ↳</button>`;
     p.querySelector("#np-x").onclick = () => { p.hidden = true; };
     p.querySelector("#np-pivot").onclick = () => pivot(node.value);
+    p.querySelector("#np-expand").onclick = () => expandNode(node, p.querySelector("#np-expand"));
   };
   requestAnimationFrame(() => { state.graphInstance = renderGraph($("#graph"), g, onSelect); });
+}
+
+// Maltego-style transform: run modules on a node and MERGE them into the board.
+const EXPANDABLE = new Set(["username", "domain", "subdomain", "ip", "email", "url"]);
+async function expandNode(node, btn) {
+  if (!EXPANDABLE.has(node.type)) { toast("This node type can't be expanded"); return; }
+  const target = node.value;
+  btn.textContent = "Expanding…"; btn.disabled = true;
+  try {
+    const res = await fetch("/api/run", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target, plan: state.plan, deep: false }),
+    }).then((r) => r.json());
+    mergeIntoResult(res, target);
+    const inst = state.graphInstance;      // keep panel? simplest: re-render board
+    showGraph();
+    toast(`+${(res.stats && res.stats.ok) || 0} findings on ${target}`);
+  } catch {
+    toast("Expand failed"); btn.disabled = false; btn.textContent = "⤢ Expand on board";
+  }
+}
+
+function mergeIntoResult(newRes, from) {
+  const cur = state.lastResult;
+  if (!cur) { state.lastResult = newRes; return; }
+  // modules (tag provenance)
+  for (const m of newRes.modules || []) { m.pivot_from = from; cur.modules.push(m); }
+  // graph nodes (dedupe by id)
+  const g = cur.graph || (cur.graph = { nodes: [], edges: [] });
+  const nodeById = new Map(g.nodes.map((n) => [n.id, n]));
+  for (const n of (newRes.graph && newRes.graph.nodes) || []) {
+    if (!nodeById.has(n.id)) { nodeById.set(n.id, n); g.nodes.push(n); }
+  }
+  const edgeKey = (e) => `${e.source}|${e.target}|${e.kind}`;
+  const seen = new Set(g.edges.map(edgeKey));
+  for (const e of (newRes.graph && newRes.graph.edges) || []) {
+    if (!seen.has(edgeKey(e))) { seen.add(edgeKey(e)); g.edges.push(e); }
+  }
+  // recompute degree for sizing
+  const deg = {}; g.edges.forEach((e) => { deg[e.source] = (deg[e.source] || 0) + 1; deg[e.target] = (deg[e.target] || 0) + 1; });
+  g.nodes.forEach((n) => { n.degree = deg[n.id] || 0; });
+  // stats
+  cur.stats = { ...(cur.stats || {}), nodes: g.nodes.length, edges: g.edges.length,
+    ok: (cur.modules || []).filter((m) => m.ok).length, total: (cur.modules || []).length };
 }
 
 // ---------------------------------------------------------------- MAP

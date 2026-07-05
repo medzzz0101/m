@@ -446,3 +446,9 @@
 .dchip.accent .dk { color:var(--accent-2); }
 .dchip.warn { border-color:var(--possible-s); } .dchip.warn .dk { color:var(--possible); }
 .dchip.good { border-color:var(--confirmed-s); } .dchip.good .dk { color:var(--confirmed); }
+
+/* node panel secondary action */
+.np-pivot2 { background:var(--surface-2); color:var(--text); border:1px solid var(--line-strong);
+  border-radius:8px; padding:9px; font-size:13px; font-weight:500; cursor:pointer; font-family:inherit; }
+.np-pivot2:hover { background:var(--surface-3); }
+.np-expand:disabled { opacity:.6; cursor:default; }

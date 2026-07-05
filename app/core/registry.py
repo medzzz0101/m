@@ -32,6 +32,12 @@ class Registry:
                         continue
                     self._modules[inst.id] = inst
 
+    def restrict(self, categories: set[str]) -> None:
+        """Keep only modules in the given categories (used for the social-only
+        build). Everything else is dropped from the registry entirely."""
+        self._modules = {mid: m for mid, m in self._modules.items()
+                         if m.category.value in categories}
+
     def all(self) -> list[BaseModule]:
         return sorted(self._modules.values(), key=lambda m: (m.category.value, m.name))
 

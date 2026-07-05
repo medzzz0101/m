@@ -40,6 +40,12 @@ UPLOADS.mkdir(parents=True, exist_ok=True)
 # --- Singletons, created once at import -------------------------------------
 registry = Registry()
 registry.discover()
+# SOCIAL-ONLY build: expose only social + identity modules (a person's public
+# social footprint). All infrastructure / image / intel / phone tooling is
+# dropped from the product. Flip SOCIAL_ONLY off to restore the full suite.
+SOCIAL_ONLY = os.environ.get("SOCIAL_ONLY", "1") != "0"
+if SOCIAL_ONLY:
+    registry.restrict({"social", "identity"})
 cache = DiskCache(DATA / "cache")
 orchestrator = Orchestrator(cache)
 
