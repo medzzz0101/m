@@ -10,8 +10,8 @@ const NODE_COLORS = {
 };
 const col = (t) => NODE_COLORS[t] || "#6d6b7e";
 
-// onPivot(value) is called when a node is clicked — lets the app re-run on it.
-export function renderGraph(canvas, data, onPivot) {
+// onSelect(node) fires when a node is clicked — the app opens an inspector panel.
+export function renderGraph(canvas, data, onSelect) {
   const ctx = canvas.getContext("2d");
   const dpr = window.devicePixelRatio || 1;
   function resize() {
@@ -131,12 +131,18 @@ export function renderGraph(canvas, data, onPivot) {
     }
   };
   canvas.onmouseup = (ev) => {
-    // A click (little movement) on a node = pivot to re-run it.
+    // A click (little movement) on a node = select it → open the inspector.
     if (downNode && downPos && Math.hypot(ev.clientX - downPos.x, ev.clientY - downPos.y) < 5) {
-      if (onPivot) onPivot(downNode.value, downNode.type);
+      const neighbours = edges.filter((e) => nodes[e.s] === downNode || nodes[e.t] === downNode)
+        .map((e) => (nodes[e.s] === downNode ? nodes[e.t] : nodes[e.s]));
+      if (onSelect) onSelect(downNode, neighbours);
     }
     drag = null; downNode = null; downPos = null;
   };
+  // touch support
+  canvas.ontouchstart = (ev) => { const t = ev.touches[0]; canvas.onmousedown({ clientX: t.clientX, clientY: t.clientY }); };
+  canvas.ontouchmove = (ev) => { const t = ev.touches[0]; canvas.onmousemove({ clientX: t.clientX, clientY: t.clientY }); ev.preventDefault(); };
+  canvas.ontouchend = (ev) => { const t = ev.changedTouches[0]; canvas.onmouseup({ clientX: t.clientX, clientY: t.clientY }); };
   canvas.onmouseleave = () => { drag = null; hover = null; };
 
   return { stop() { running = false; } };

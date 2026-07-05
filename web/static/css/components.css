@@ -414,3 +414,22 @@
 .lk-check { display:flex; gap:12px; align-items:flex-start; font-size:14px; color:var(--text); padding:7px 0; }
 .lk-check svg { width:17px; height:17px; color:var(--accent); flex:0 0 17px; margin-top:2px; }
 @media(max-width:640px){ .lk-row{ flex-direction:column; } .lk-row .run-btn{ justify-content:center; padding:13px; } }
+
+/* ---- Investigation board (Gotham-style) ---- */
+.graph-wrap.board { height:min(72vh,620px); }
+.node-panel { position:absolute; top:12px; right:12px; width:260px; max-width:calc(100% - 24px);
+  background:rgba(13,13,13,0.94); backdrop-filter:blur(12px); border:1px solid var(--line-strong);
+  border-radius:12px; padding:16px; box-shadow:var(--shadow-pop); animation:pop var(--t-med) both; z-index:5; }
+.np-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.np-dot { width:10px; height:10px; border-radius:3px; }
+.np-type { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); flex:1; }
+.np-x { width:24px; height:24px; border-radius:6px; background:var(--surface-2); border:1px solid var(--line); color:var(--text); cursor:pointer; font-size:12px; }
+.np-val { font-family:var(--mono); font-size:14px; color:var(--text); word-break:break-word; margin-bottom:8px; }
+.np-link { font-size:12px; color:var(--accent-2); text-decoration:none; }
+.np-sec { font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3); margin:14px 0 8px; }
+.np-conns { display:flex; flex-wrap:wrap; gap:6px; }
+.np-conn { font-family:var(--mono); font-size:11px; color:var(--text-2); border:1px solid var(--line-strong); border-radius:999px; padding:3px 9px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.np-muted { color:var(--text-3); font-size:12px; }
+.np-pivot { background:var(--accent); color:#0c0a1e; }
+.np-pivot:hover { background:var(--accent-2); }
+@media(max-width:640px){ .node-panel{ position:fixed; top:auto; bottom:calc(var(--tabbar) + 12px); left:12px; right:12px; width:auto; } }

@@ -589,18 +589,42 @@ function showGraph() {
     return;
   }
   const head = el("div", "section-h");
-  head.innerHTML = `<h2>Entity graph</h2><span class="rule"></span><span class="hint">${g.nodes.length} entities · ${g.edges.length} links · tap a node to pivot</span>`;
+  head.innerHTML = `<h2>Investigation board</h2><span class="rule"></span><span class="hint">${g.nodes.length} entities · ${g.edges.length} links · tap a node to inspect</span>`;
   c.appendChild(head);
-  const wrap = el("div", "graph-wrap");
-  wrap.innerHTML = `<canvas id="graph"></canvas><div class="graph-legend" id="legend"></div>`;
+  const wrap = el("div", "graph-wrap board");
+  wrap.innerHTML = `<canvas id="graph"></canvas>
+    <div class="graph-legend" id="legend"></div>
+    <div class="node-panel" id="node-panel" hidden></div>`;
   c.appendChild(wrap);
   // legend
   const types = [...new Set(g.nodes.map((n) => n.type))];
   $("#legend").innerHTML = types.map((t) =>
     `<span class="leg"><i style="background:var(--n-${t},#6d6b7e)"></i>${t}</span>`).join("");
   if (state.graphInstance) state.graphInstance.stop();
-  const pivot = (value) => { const i = ensureInput(); i.value = value; onNav("home"); setTimeout(() => { $("#target").value = value; runAll(); }, 50); };
-  requestAnimationFrame(() => { state.graphInstance = renderGraph($("#graph"), g, pivot); });
+
+  const pivot = (value) => { ensureInput(); onNav("home"); setTimeout(() => { $("#target").value = value; runAll(); }, 50); };
+  const onSelect = (node, neighbours) => {
+    const p = $("#node-panel");
+    const color = `var(--n-${node.type}, #6d6b7e)`;
+    const nb = (neighbours || []).slice(0, 12);
+    const link = node.type === "url" ? node.value
+      : node.type === "domain" || node.type === "subdomain" ? `https://${node.value}` : null;
+    p.hidden = false;
+    p.innerHTML = `
+      <div class="np-head">
+        <span class="np-dot" style="background:${color}"></span>
+        <span class="np-type">${esc(node.type)}</span>
+        <button class="np-x" id="np-x">✕</button>
+      </div>
+      <div class="np-val">${esc(node.label || node.value)}</div>
+      ${link ? `<a class="np-link" href="${esc(link)}" target="_blank" rel="noopener">open ↗</a>` : ""}
+      <div class="np-sec">Connections · ${(neighbours || []).length}</div>
+      <div class="np-conns">${nb.map((n) => `<span class="np-conn" style="border-color:var(--n-${n.type},#333)">${esc(n.label || n.value)}</span>`).join("") || `<span class="np-muted">none</span>`}</div>
+      <button class="btn np-pivot" id="np-pivot" style="width:100%;margin-top:14px">Search this ↳</button>`;
+    p.querySelector("#np-x").onclick = () => { p.hidden = true; };
+    p.querySelector("#np-pivot").onclick = () => pivot(node.value);
+  };
+  requestAnimationFrame(() => { state.graphInstance = renderGraph($("#graph"), g, onSelect); });
 }
 
 // ---------------------------------------------------------------- MAP
