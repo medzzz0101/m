@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------
+# LATTICE — Python dependencies.
+# Kept intentionally minimal. Each line notes WHY it exists.
+# ---------------------------------------------------------------------------
+
+fastapi==0.115.6          # async web framework (our API + static serving)
+uvicorn[standard]==0.34.0 # ASGI server that actually runs FastAPI
+httpx==0.28.1             # async HTTP client for talking to public OSINT APIs
+python-multipart==0.0.20  # lets FastAPI accept file uploads (image forensics)
+
+# --- OSINT helpers (used by specific modules) ---
+dnspython==2.7.0          # DNS lookups (A/AAAA/MX/TXT/NS/CNAME/SOA, SPF/DMARC)
+Pillow==11.1.0            # image decoding + EXIF access + ELA forensics
+exifread==3.0.0           # robust EXIF/GPS tag extraction (handles odd cameras)
+mmh3==5.0.1               # MurmurHash3 — favicon hashing for infra correlation
+phonenumbers==8.13.52     # libphonenumber — phone-number metadata (not owner)
+cryptography==44.0.0      # parse live TLS certificates (tls_certificate module)

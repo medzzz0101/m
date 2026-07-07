@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#07080a">
+<title>LIMBO — public-footprint OSINT console</title>
+<meta name="description" content="Map anyone's public footprint. 660+ platforms, 72 intel modules, one live entity graph. Public data only.">
+<meta property="og:title" content="LIMBO — map anyone's public footprint">
+<meta property="og:description" content="660+ platforms · 72 intel modules · one live entity graph · public data only.">
+<meta property="og:image" content="/static/marketing/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="apple-touch-icon" href="/static/icon.svg">
+<link rel="manifest" href="/manifest.webmanifest">
+<!-- Distinctive display type (Space Grotesk) — gives LIMBO a real identity
+     instead of a default system-font look. Mono stays for data readouts. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/layout.css">
+<link rel="stylesheet" href="/static/css/components.css">
+</head>
+<body>
+
+<!-- Boot sequence -->
+<div class="boot" id="boot">
+  <div class="boot-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>
+    <span class="t">LIMBO</span>
+  </div>
+  <div class="boot-lines" id="boot-lines"></div>
+  <div class="boot-skip">TAP TO SKIP</div>
+</div>
+
+<div class="progress" id="progress"></div>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg></div>
+      <div>
+        <div class="brand-name">LIMBO</div>
+        <div class="brand-sub">intelligence console</div>
+      </div>
+      <button class="sidebar-x only-mobile" id="sidebar-x">✕</button>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="sidebar-foot">
+      <span class="dot" id="health-dot"></span>
+      <span id="health-txt">connecting…</span>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="menu-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+      <div class="topbar-title" id="topbar-title">Console</div>
+      <button class="k-btn" id="cmdk-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><span>Search</span><kbd>⌘K</kbd></button>
+    </header>
+
+    <div class="content view" id="content"><!-- rendered by app.js --></div>
+
+    <!-- Bottom tabs (mobile) -->
+    <nav class="tabbar">
+      <button class="tab active" data-view="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Modules</button>
+      <button class="tab" data-view="results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Results</button>
+      <button class="tab" data-view="graph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l8 1M16 10l-3 6M8 8l4 8"/></svg>Graph</button>
+      <button class="tab" data-view="pricing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>Plans</button>
+    </nav>
+  </main>
+</div>
+
+<!-- hidden file input for image upload -->
+<input type="file" id="file-input" accept="image/*" hidden>
+
+<!-- Overlays get injected by app.js -->
+<div id="overlays"></div>
+
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

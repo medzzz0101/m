@@ -1,0 +1,111 @@
+/* ==========================================================================
+   layout.css — the shell skeleton.
+   Desktop: fixed left sidebar + main column with sticky topbar.
+   Mobile : sidebar becomes a slide-over; a bottom tab bar appears.
+   ========================================================================== */
+* { box-sizing: border-box; }
+/* A hidden overlay must never swallow taps — beat class-based display rules. */
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "calt", "kern", "liga", "ss01";
+  /* One barely-there wash — restraint over decoration. */
+  background-image:
+    radial-gradient(900px 500px at 88% -14%, rgba(123,108,240,0.06), transparent);
+  background-attachment: fixed;
+  letter-spacing: 0.1px;
+}
+.mono { font-family: var(--mono); }
+
+/* progress bar */
+.progress { position: fixed; top:0; left:0; height:2px; width:0;
+  background: linear-gradient(90deg, var(--accent), var(--likely));
+  box-shadow: 0 0 12px var(--accent-glow); z-index:100; opacity:0;
+  transition: width var(--t-med), opacity var(--t-fast); }
+.progress.on { opacity:1; }
+
+.shell { display:flex; min-height:100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: var(--sidebar); flex:0 0 var(--sidebar);
+  background: var(--bg-2); border-right:1px solid var(--line);
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.brand { display:flex; align-items:center; gap:var(--s3); padding:var(--s5) var(--s4) var(--s4); }
+.brand-mark { width:30px; height:30px; border-radius:var(--r1); display:grid; place-items:center;
+  background: var(--surface-2); border:1px solid var(--line-strong); color:var(--accent); }
+.brand-mark svg { width:18px; height:18px; }
+.brand-name { font-family:var(--display); font-weight:600; letter-spacing:.14em; font-size:14px; color:var(--text); }
+.brand-sub { font-size:10px; letter-spacing:.16em; color:var(--text-3); text-transform:uppercase; }
+.sidebar-x { margin-left:auto; width:32px; height:32px; border-radius:var(--r1); background:var(--surface-2);
+  border:1px solid var(--line); color:var(--text); font-size:16px; cursor:pointer; }
+
+.nav { flex:1; padding:var(--s2); }
+.nav-h { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--text-3);
+  padding:var(--s4) var(--s3) var(--s2); }
+.nav-i { display:flex; align-items:center; gap:var(--s3); padding:9px var(--s3); margin:1px 4px;
+  border-radius:var(--r1); cursor:pointer; color:var(--text-2); border:1px solid transparent;
+  transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast); }
+.nav-i:hover { background:var(--surface-2); color:var(--text); }
+.nav-i.active { background:var(--accent-soft); color:var(--text); border-color:var(--accent-line); }
+.nav-dot { width:8px; height:8px; border-radius:2px; flex:0 0 8px; }
+.nav-label { font-size:13.5px; font-weight:500; flex:1; }
+.nav-count { font-size:11px; color:var(--text-3); font-family:var(--mono); }
+
+.sidebar-foot { padding:var(--s3) var(--s4); border-top:1px solid var(--line);
+  display:flex; align-items:center; gap:var(--s2); font-size:11px; color:var(--text-3); }
+.dot { width:8px; height:8px; border-radius:50%; background:var(--confirmed);
+  box-shadow:0 0 8px var(--confirmed); }
+.dot.off { background:var(--possible); box-shadow:0 0 8px var(--possible); }
+
+/* Main column */
+.main { flex:1; min-width:0; display:flex; flex-direction:column; }
+.topbar { position:sticky; top:0; z-index:40; height:var(--topbar); display:flex; align-items:center;
+  gap:var(--s3); padding:0 var(--s5); background:rgba(7,8,10,0.72); backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line); }
+.topbar-title { font-weight:600; font-size:15px; flex:1; }
+.k-btn { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:var(--r1);
+  background:var(--surface-2); border:1px solid var(--line); color:var(--text-3); font-size:12px;
+  cursor:pointer; transition:border-color var(--t-fast), color var(--t-fast); }
+.k-btn:hover { border-color:var(--accent-line); color:var(--text); }
+.k-btn kbd { font-family:var(--mono); background:var(--surface-3); border-radius:4px; padding:1px 5px;
+  font-size:11px; }
+
+.content { flex:1; padding:var(--s6) var(--s5) var(--s7); max-width:1220px; width:100%; margin:0 auto; }
+.view { animation: viewin var(--t-med) both; }
+
+/* bottom tab bar (mobile) */
+.tabbar { position:sticky; bottom:0; z-index:40;
+  height:calc(var(--tabbar) + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom);
+  display:none; background:rgba(11,13,16,0.94); backdrop-filter:blur(14px); border-top:1px solid var(--line); }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  color:var(--text-3); font-size:10px; cursor:pointer; border:none; background:none; transition:color var(--t-fast); }
+.tab.active { color:var(--accent); }
+.tab svg { width:20px; height:20px; }
+
+.only-mobile { display:none; }
+.icon-btn { width:38px; height:38px; border-radius:var(--r1); background:var(--surface-2);
+  border:1px solid var(--line); color:var(--text); cursor:pointer; display:grid; place-items:center; }
+.icon-btn svg { width:20px; height:20px; }
+
+@media (max-width: 900px) {
+  .sidebar { display:none; }
+  .sidebar.open { display:flex; position:fixed; z-index:60; left:0; top:0; height:100vh;
+    box-shadow:var(--shadow-pop); animation: slidein var(--t-med); }
+  .sidebar-backdrop { position:fixed; inset:0; z-index:55; background:rgba(0,0,0,0.6);
+    backdrop-filter:blur(2px); }
+  .only-mobile { display:flex; }
+  .tabbar { display:flex; }
+  .content { padding:var(--s5) var(--s4) calc(var(--tabbar) + var(--s6)); max-width:100%; }
+}
+
+@keyframes viewin { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+@keyframes slidein { from{transform:translateX(-100%);} to{transform:none;} }

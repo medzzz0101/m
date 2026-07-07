@@ -1,0 +1,13 @@
+{
+  "name": "LIMBO — intelligence console",
+  "short_name": "LIMBO",
+  "description": "Self-hosted public-signal OSINT intelligence console.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07080a",
+  "theme_color": "#07080a",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

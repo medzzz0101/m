@@ -1,0 +1,91 @@
+/* ==========================================================================
+   tokens.css — LIMBO design system, rebuilt on the Linear / Vercel / Raycast
+   principles: intentional restraint, a systematic scale, hairline borders, one
+   accent used sparingly. If a glow or shadow is visible, it's already too much.
+   ========================================================================== */
+:root {
+  /* Surface ladder — exact Raycast steps: near-black, barely separated. */
+  --bg:        #07080a;   /* canvas */
+  --bg-2:      #0a0a0b;   /* recessed */
+  --surface:   #0d0d0d;   /* surface */
+  --surface-2: #101111;   /* elevated / hover */
+  --surface-3: #161617;   /* active */
+  --card:      #121212;   /* cards */
+  --hover:     #101111;
+
+  /* Hairlines — solid #242728 like Raycast; separation from surface steps. */
+  --line:        #1c1d1f;
+  --line-strong: #262829;
+
+  /* Text ramp (Raycast): Ink / Mute / Ash. */
+  --text:   #f4f4f6;
+  --text-2: #9c9c9d;
+  --text-3: #6a6b6c;
+
+  /* Primary CTA = near-white pill with dark text (the signature pro move). */
+  --cta:      #f4f4f6;
+  --cta-2:    #ffffff;
+  --cta-ink:  #0b0b0c;
+
+  /* THE accent — one restrained indigo-violet, only for active/focus/links. */
+  --accent:      #8b7bf7;
+  --accent-2:    #a495ff;
+  --accent-soft: rgba(139,123,247,0.13);
+  --accent-line: rgba(139,123,247,0.32);
+  --accent-glow: rgba(139,123,247,0.16);
+  /* Secondary hue kept for the celebratory moment only — not everyday UI. */
+  --accent2:      #e15c9e;
+  --accent2-2:    #ef86b8;
+  --accent2-soft: rgba(225,92,158,0.12);
+  --accent2-glow: rgba(225,92,158,0.18);
+
+  /* Category hues — muted; rendered as small dots/ticks, never fills. */
+  --c-social:         #7b6cf0;
+  --c-identity:       #d071a8;
+  --c-infrastructure: #5b8def;
+  --c-image:          #46b98a;
+  --c-intel:          #cf9e52;
+
+  /* Confidence / status — desaturated, never neon. */
+  --confirmed: #46b98a; --confirmed-s: rgba(70,185,138,0.12);
+  --likely:    #5b8def; --likely-s:    rgba(91,141,239,0.12);
+  --possible:  #cf9e52; --possible-s:  rgba(207,158,82,0.12);
+  --info:      #7b8494; --info-s:      rgba(123,132,148,0.09);
+  --bad:       #e06a6a; --bad-s:       rgba(224,106,106,0.12);
+
+  /* Graph node hues */
+  --n-username:#7b6cf0; --n-profile:#988bff; --n-email:#cf9e52;
+  --n-domain:#5b8def;   --n-subdomain:#86aef5; --n-ip:#46b98a;
+  --n-geo:#d071a8;      --n-tech:#cf9e52;      --n-org:#ececee;
+  --n-url:#9ea1a9;      --n-btc:#d99a3a;       --n-default:#5a5e66;
+
+  /* Type — Space Grotesk display + Inter-like system body + mono for data. */
+  --font: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --display: "Space Grotesk", var(--font);
+
+  /* Systematic spacing scale (4px base — never mix off-scale values). */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px;
+
+  /* Tight radii (Linear/Raycast: 6–12px). */
+  --r1:6px; --r2:8px; --r3:12px; --pill:999px;
+
+  /* Shadows — Raycast ships NONE on surfaces; elevation is the surface ladder.
+     Only floating overlays (modals) get a soft one. */
+  --shadow:     none;
+  --shadow-2:   none;
+  --shadow-pop: 0 16px 48px rgba(0,0,0,0.55);
+
+  /* Motion — quick and calm. */
+  --t-fast: 120ms cubic-bezier(.4,0,.2,1);
+  --t-med:  180ms cubic-bezier(.4,0,.2,1);
+
+  /* Metrics */
+  --sidebar: 256px;
+  --topbar: 52px;
+  --tabbar: 60px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration:.01ms !important; transition-duration:.01ms !important; }
+}

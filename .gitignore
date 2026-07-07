@@ -1,18 +1,30 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# --- Secrets ---
+.env
 
-# Other files and folders
-.settings/
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+# --- Runtime data (caches, uploaded evidence, exported reports) ---
+data/cache/
+data/uploads/
+data/reports/
+*.log
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# --- OS / editor noise ---
+.DS_Store
+.idea/
+.vscode/
+
+# Ephemeral runtime
+data/ping_test.py
+data/public_url.txt
+data/server.log
+data/tunnel.log
+
+# All runtime data (cache, uploads, reports, tunnels, test artifacts)
+/data/

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07080a">
+<title>LIMBO — owner</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;box-sizing:border-box}
+  :root{--bg:#07080a;--surface:#0d0d0d;--card:#121212;--line:#1e1f21;--line2:#262829;
+    --text:#f4f4f6;--mute:#9c9c9d;--ash:#6a6b6c;--accent:#8b7bf7;--cta:#f4f4f6;--good:#46b98a;--bad:#e06a6a}
+  body{background:var(--bg);color:var(--text);font-family:"Space Grotesk",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:.1px;min-height:100vh}
+  .mono{font-family:"JetBrains Mono",monospace}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+  .top{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+  .top svg{width:26px;height:26px;color:var(--accent)}
+  .top b{font-weight:600;letter-spacing:.16em}.top span{color:var(--ash);font-size:13px;margin-left:auto;font-family:"JetBrains Mono",monospace}
+  .gate{max-width:400px;margin:14vh auto 0;text-align:center}
+  .gate h1{font-size:24px;font-weight:600;margin-bottom:8px}
+  .gate p{color:var(--mute);font-size:14px;margin-bottom:20px}
+  input{width:100%;background:var(--surface);border:1px solid var(--line2);border-radius:8px;
+    padding:12px 14px;color:var(--text);font-family:"JetBrains Mono",monospace;font-size:14px;outline:none}
+  input:focus{border-color:var(--accent)}
+  .btn{background:var(--cta);color:#0b0b0c;border:none;border-radius:8px;padding:11px 18px;font-weight:600;
+    font-size:14px;cursor:pointer;font-family:inherit;letter-spacing:.2px}
+  .btn:hover{background:#fff}
+  .btn.sm{padding:7px 12px;font-size:12px}
+  .btn.g{background:var(--surface);color:var(--text);border:1px solid var(--line2)}
+  .btn.g:hover{background:var(--card)}
+  .btn.d{background:transparent;color:var(--bad);border:1px solid transparent}
+  .err{color:var(--bad);font-size:13px;margin-top:12px}
+  .warn{background:rgba(224,106,106,.08);border:1px solid rgba(224,106,106,.3);border-radius:8px;
+    padding:12px 14px;color:#f0a;font-size:13px;margin-bottom:20px;color:var(--bad)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:16px}
+  .card h2{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+  .card h2 .c{color:var(--ash);font-family:"JetBrains Mono",monospace;font-weight:400;font-size:12px}
+  .gen{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;color:var(--ash);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+    padding:8px 10px;border-bottom:1px solid var(--line)}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  .code{font-family:"JetBrains Mono",monospace;color:var(--text)}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;
+    padding:2px 8px;border-radius:999px;border:1px solid var(--line2);color:var(--mute)}
+  .pill.env{color:var(--ash)} .pill.gen{color:var(--accent);border-color:rgba(139,123,247,.4)}
+  .uses{font-family:"JetBrains Mono",monospace;color:var(--accent)}
+  .copy{cursor:pointer;color:var(--ash);font-size:11px;margin-left:8px}.copy:hover{color:var(--text)}
+  .stat{display:flex;gap:28px;margin-bottom:16px}
+  .stat .n{font-size:26px;font-weight:600;font-family:"JetBrains Mono",monospace}
+  .stat .l{color:var(--ash);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+  .log{font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--mute)}
+  .log div{padding:5px 0;border-bottom:1px solid var(--line)}
+  .log b{color:var(--text)}
+  .hidden{display:none}
+  a.back{color:var(--ash);font-size:13px}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/></svg>
+    <b>LIMBO OWNER</b>
+    <span id="ipline"></span>
+  </div>
+
+  <div class="gate" id="gate">
+    <h1>Owner access</h1>
+    <p>Enter your owner token. It's remembered on this device — no one else gets in.</p>
+    <input id="token" type="password" placeholder="owner token…" autocomplete="off">
+    <button class="btn" id="enter" style="width:100%;margin-top:12px">Enter</button>
+    <div class="err hidden" id="gate-err">Wrong token.</div>
+    <p style="margin-top:20px"><a class="back" href="/">← back to app</a></p>
+  </div>
+
+  <div id="panel" class="hidden">
+    <div class="warn hidden" id="defwarn">⚠ You're using the default owner token. Set <b>ADMIN_TOKEN</b> in your host env before going public.</div>
+    <div class="card">
+      <div class="stat">
+        <div><div class="n" id="s-keys">0</div><div class="l">Keys</div></div>
+        <div><div class="n" id="s-redeems">0</div><div class="l">Total unlocks</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Generate a key <span class="c">reusable · unlimited uses</span></h2>
+      <div class="gen" id="gen"></div>
+      <table><thead><tr><th>Code</th><th>Tier</th><th>Uses</th><th>Source</th><th></th></tr></thead>
+        <tbody id="keys"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Recent unlocks <span class="c">last 50</span></h2>
+      <div class="log" id="log"></div>
+    </div>
+    <p><a class="back" href="/">← back to app</a> · <span class="back" id="logout" style="cursor:pointer">log out</span></p>
+  </div>
+</div>
+
+<script>
+const $=(s)=>document.querySelector(s);
+let TOKEN = localStorage.getItem("limbo_owner")||"";
+const TIERS=["premium","elite","master"];
+
+async function api(path, body){
+  const r = await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:TOKEN,...body})});
+  return {status:r.status, data: await r.json().catch(()=>({}))};
+}
+function copy(t){ navigator.clipboard && navigator.clipboard.writeText(t); }
+
+async function load(){
+  const {status,data} = await api("/api/admin/state",{});
+  if(status!==200){ show(false); return; }
+  show(true);
+  $("#ipline").textContent = "your IP · "+(data.your_ip||"?");
+  $("#defwarn").classList.toggle("hidden", !data.token_is_default);
+  $("#s-keys").textContent = data.keys.length;
+  $("#s-redeems").textContent = data.total_redeems;
+  $("#gen").innerHTML = TIERS.map(t=>`<button class="btn g sm" data-t="${t}">+ ${t}</button>`).join("");
+  $("#gen").querySelectorAll("button").forEach(b=>b.onclick=async()=>{
+    const {data:d}=await api("/api/admin/keygen",{tier:b.dataset.t}); if(d.ok) load();
+  });
+  $("#keys").innerHTML = data.keys.map(k=>`<tr>
+    <td><span class="code">${k.code}</span><span class="copy" data-c="${k.code}">copy</span></td>
+    <td><span class="pill">${k.tier}</span></td>
+    <td class="uses">${k.uses}</td>
+    <td><span class="pill ${k.source}">${k.source}</span></td>
+    <td>${k.source==="generated"?`<button class="btn d sm" data-r="${k.code}">revoke</button>`:""}</td>
+  </tr>`).join("");
+  $("#keys").querySelectorAll(".copy").forEach(e=>e.onclick=()=>{copy(e.dataset.c);e.textContent="copied";setTimeout(()=>e.textContent="copy",900);});
+  $("#keys").querySelectorAll("[data-r]").forEach(b=>b.onclick=async()=>{await api("/api/admin/revoke",{code:b.dataset.r});load();});
+  $("#log").innerHTML = (data.redemptions||[]).map(r=>{
+    const d=new Date(r.ts*1000).toLocaleString();
+    return `<div><b>${r.code}</b> → ${r.tier} · ${r.ip} · ${d}</div>`;
+  }).join("") || "<div>No unlocks yet.</div>";
+}
+function show(ok){ $("#gate").classList.toggle("hidden",ok); $("#panel").classList.toggle("hidden",!ok); }
+
+$("#enter").onclick=async()=>{
+  TOKEN=$("#token").value.trim();
+  const {status}=await api("/api/admin/state",{});
+  if(status===200){ localStorage.setItem("limbo_owner",TOKEN); $("#gate-err").classList.add("hidden"); load(); }
+  else { $("#gate-err").classList.remove("hidden"); }
+};
+$("#token").addEventListener("keydown",e=>{if(e.key==="Enter")$("#enter").click();});
+$("#logout").onclick=()=>{localStorage.removeItem("limbo_owner");location.reload();};
+if(TOKEN) load();
+</script>
+</body></html>

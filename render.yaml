@@ -1,0 +1,21 @@
+# ---------------------------------------------------------------------------
+# render.yaml — one-click deploy to Render (https://render.com) as a real
+# public website. Push this repo to GitHub, then in Render:
+#   New +  →  Blueprint  →  pick this repo. Render reads this file and builds
+#   the Docker image, gives you a permanent https://lattice-xxxx.onrender.com URL.
+# All env vars below are OPTIONAL — the app runs fully without them (payments
+# fall back to demo mode). Set them in the Render dashboard to go live.
+# ---------------------------------------------------------------------------
+services:
+  - type: web
+    name: lattice
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: PAY_ADDRESS_BTC   # your BTC receiving address (enables real crypto pay)
+        sync: false
+      - key: PAY_ADDRESS_ETH   # ETH + USDT receiving address
+        sync: false
+      - key: PAYPAL_ME         # your paypal.me username
+        sync: false

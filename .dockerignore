@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+data/cache
+data/uploads
+data/invoices
+data/*.log
+data/public_url.txt
+*.log
+.env
+node_modules
+tunnel.py
